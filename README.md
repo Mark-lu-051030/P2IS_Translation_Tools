@@ -1,4 +1,5 @@
-# 此项目is forked from cmccord-dev/p2ep_tool， 感谢cmccord-dev大佬的贡献
+# 此项目is forked from cmccord-dev/p2ep_tool, 用于翻译PS1上的Persona 2 IS。
+# 感谢cmccord-dev大佬的贡献， 跪拜大佬
 # 文件总览
 ## JS 主入口
 - p2ep_tool.mjs — CLI 入口，注册所有子命令
