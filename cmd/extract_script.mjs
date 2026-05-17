@@ -37,7 +37,13 @@ export const handler = async (argv) => {
 
     let files = archive.extract_files(file_buff);
     files.forEach((f, o) => {
-      let res = file.parseFile(f);
+      let res;
+      try {
+        res = file.parseFile(f);
+      } catch (e) {
+        console.log(`  skip ${i}_${o}: ${e.message}`);
+        return;
+      }
       if (res && res.type == "script") {
         console.log(f[0],f[1]);
         console.assert(f[1]==2, `LZSS aoeu`);

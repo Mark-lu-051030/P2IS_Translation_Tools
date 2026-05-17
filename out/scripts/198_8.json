@@ -1,0 +1,34 @@
+{
+  "functions": [
+    {
+      "name": "START",
+      "addr": 0,
+      "unk4": 0,
+      "instructions": [
+        {
+          "op": 89,
+          "args": [
+            6,
+            0
+          ]
+        },
+        {
+          "op": 90,
+          "args": [
+            72
+          ]
+        },
+        {
+          "op": 14,
+          "args": [
+            0
+          ]
+        }
+      ]
+    }
+  ],
+  "dialogs": {},
+  "dialog_order": [],
+  "file": 198,
+  "file_num": 8
+}

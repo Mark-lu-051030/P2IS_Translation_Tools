@@ -1,0 +1,80 @@
+{
+  "functions": [
+    {
+      "name": "START",
+      "addr": 0,
+      "unk4": 0,
+      "instructions": [
+        {
+          "op": 67
+        },
+        {
+          "op": 63,
+          "args": [
+            368
+          ]
+        },
+        {
+          "op": 55,
+          "args": [
+            368,
+            0,
+            1
+          ]
+        },
+        {
+          "op": 36,
+          "args": [
+            0
+          ]
+        },
+        {
+          "op": 19,
+          "args": [
+            {
+              "type": "dialog",
+              "diag": "diag0"
+            }
+          ]
+        },
+        {
+          "op": 18,
+          "args": [
+            4
+          ]
+        },
+        {
+          "op": 37,
+          "args": [
+            3
+          ]
+        },
+        {
+          "op": 55,
+          "args": [
+            368,
+            0,
+            1
+          ]
+        },
+        {
+          "op": 68
+        },
+        {
+          "op": 14,
+          "args": [
+            0
+          ]
+        }
+      ]
+    }
+  ],
+  "dialogs": {
+    "diag0": false
+  },
+  "dialog_order": [
+    "diag0"
+  ],
+  "file": 90,
+  "file_num": 71
+}

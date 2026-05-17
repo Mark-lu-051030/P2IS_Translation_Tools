@@ -56,8 +56,8 @@ export const handler = async (argv) => {
     let files = archive.extract_files(file_buff);
     files.forEach((f, o) => {
         if(f[0]==1 && f[8]==8 && f[1] != 0) {
-            console.log(`${i} ${o}`);
-            throw new Error();
+            // compressed battle strings - skip for now
+            return;
         }
       
       //console.log(f);
@@ -68,7 +68,7 @@ export const handler = async (argv) => {
           t.file = i;
           t.file_num = o;
           let len = (t.strings.length) * 2;
-          t.strings.forEach((line) => (len += msg.calculate_dialog_length(line)));
+          t.strings.forEach((line) => { if (line) len += msg.calculate_dialog_length(line); });
           t.max_len = len;
           fs.writeFileSync(
             `${argv.out}/${i}_${o}_${k}.json`,
