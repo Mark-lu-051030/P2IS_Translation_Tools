@@ -5,8 +5,10 @@
 import json, shutil, re
 from PIL import Image, ImageDraw, ImageFont
 
-FONT_BIN   = '/home/mark/Code/ROMHacking/games/Persona2IS/extrac/D/F0086.BIN'
-TTF_PATH   = '/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf'
+FONT_BIN   = '/home/mark/Code/RomHacking/Game/P2IS_PSX/ogd/extrac/D/F0086.BIN'
+ISO_PATH   = '/home/mark/Code/RomHacking/Game/P2IS_PSX/ogd/Persona 2 - Tsumi - Innocent Sin (Japan).bin'
+FONT_FILENUM = 86   # FILEPOS.DAT 中 F0086.BIN 的文件号
+TTF_PATH   = 'NotoSansCJKsc-Regular.otf'
 CODETABLE  = 'codetable.json'
 FIRST_SLOT = 2576   # 从这个槽开始分配
 
@@ -93,6 +95,48 @@ for ch, idx in assignments.items():
 with open(CODETABLE, 'w', encoding='utf-8') as f:
     json.dump(ct, f, ensure_ascii=False, separators=(',', ':'))
 print(f'已更新 codetable.json')
+
+# ── 写回 ISO（file 86）────────────────────────────────────────
+import struct
+
+SECTOR    = 2352
+BLOCK_OFF = 0x18
+BLOCK_SIZE = 0x800
+
+def _read_sectors(f, block, size):
+    out = bytearray()
+    sec = block * SECTOR
+    while len(out) < size:
+        f.seek(sec)
+        raw = f.read(SECTOR)
+        chunk = min(BLOCK_SIZE, size - len(out))
+        out += raw[BLOCK_OFF:BLOCK_OFF + chunk]
+        sec += SECTOR
+    return bytes(out)
+
+def _write_sectors(f, block, data):
+    sec = block * SECTOR
+    off = 0
+    while off < len(data):
+        f.seek(sec)
+        raw = bytearray(f.read(SECTOR))
+        chunk = min(BLOCK_SIZE, len(data) - off)
+        raw[BLOCK_OFF:BLOCK_OFF + chunk] = data[off:off + chunk]
+        if chunk < BLOCK_SIZE:
+            raw[BLOCK_OFF + chunk:BLOCK_OFF + BLOCK_SIZE] = bytes(BLOCK_SIZE - chunk)
+        f.seek(sec)
+        f.write(bytes(raw))
+        off += chunk
+        sec += SECTOR
+
+with open(ISO_PATH, 'r+b') as iso:
+    filepos = _read_sectors(iso, 0x17, 0x1b88)
+    block    = struct.unpack_from('<I', filepos, FONT_FILENUM * 8)[0]
+    orig_sz  = struct.unpack_from('<I', filepos, FONT_FILENUM * 8 + 4)[0]
+    assert len(font_data) == orig_sz, \
+        f'字体大小变化 {len(font_data)} != {orig_sz}，请检查'
+    _write_sectors(iso, block, bytes(font_data))
+print(f'已将修改后的 F0086.BIN 写回 ISO (file {FONT_FILENUM}, block {block})')
 
 # ── 输出分配表供检查 ──────────────────────────────────────────
 print('\n字符 → 槽位:')

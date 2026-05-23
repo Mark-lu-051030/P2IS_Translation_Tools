@@ -14,6 +14,18 @@ for k, v in raw_ct.items():
     if len(v) == 1 and not v.startswith('['):
         rev[v] = int(k)
 
+# 全角标点 → 复用已有半角/日文槽位
+FULLWIDTH_ALIASES = {
+    '！': '!', '？': '?', '…': '.',
+    '，': '、', '。': '。',
+    '：': ':', '；': ';',
+    '（': '(', '）': ')',
+    '　': ' ',   # 全角空格
+}
+for fw, hw in FULLWIDTH_ALIASES.items():
+    if hw in rev and fw not in rev:
+        rev[fw] = rev[hw]
+
 # ── 标签解析: tag 字符串 → items 子列表 ──────────────────────
 TAG_SIMPLE = {
     'NAME':    [0x21],

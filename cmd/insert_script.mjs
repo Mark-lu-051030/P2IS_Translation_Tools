@@ -57,7 +57,7 @@ export const handler = async (argv) => {
     let compiled = scene.compile_script(file);
     let compressed = lzss.compress(compiled, 0xc, true);
 
-    compressed.writeUInt32LE(0x201, 0);
+    compressed.writeUInt32LE(0x101, 0);
     compressed.writeUInt32LE(compressed.byteLength, 4);
     compressed.writeUInt32LE(compiled.byteLength, 8);
     if (!group[file.file]) {
@@ -73,12 +73,41 @@ export const handler = async (argv) => {
     let files = archive.extract_files(arch);
     console.log(`Processing file ${file}`);
 
-    group[file].forEach(([buff, id]) => {
-      buff.writeUInt16LE(files[id].readUInt16LE(2), 2); //copy whatever that is
-      files[id] = buff;
-    });
-    let new_arch = archive.build_archive(files, file);
-    console.assert(new_arch.byteLength <= arch.byteLength, `${i}`);
+    // Check if archive uses sector-alignment padding (type=0 entries).
+    // If so, use in-place patching to preserve original sub-file sector positions.
+    let has_sector_padding = false;
+    {
+      let p = 0;
+      while (p < arch.byteLength) {
+        let t = arch[p];
+        if (t === 0) { has_sector_padding = true; break; }
+        let l = arch.readUInt32LE(p + 4);
+        if (l === 0) break;
+        p += l;
+        while (p & 3) p++;
+      }
+    }
+
+    let new_arch;
+    if (has_sector_padding) {
+      // Build replacements map: sub-file index → new buffer (with header field copied)
+      let replacements = {};
+      group[file].forEach(([buff, id]) => {
+        buff.writeUInt16LE(files[id].readUInt16LE(2), 2); //copy whatever that is
+        replacements[id] = buff;
+      });
+      new_arch = archive.patch_archive_inplace(arch, replacements);
+      console.log(`File ${file}: in-place patch, archive stays ${new_arch.byteLength} bytes`);
+    } else {
+      group[file].forEach(([buff, id]) => {
+        buff.writeUInt16LE(files[id].readUInt16LE(2), 2); //copy whatever that is
+        files[id] = buff;
+      });
+      new_arch = archive.build_archive(files, file);
+      if (new_arch.byteLength > arch.byteLength) {
+        throw new Error(`File ${file}: new archive ${new_arch.byteLength} bytes exceeds original ${arch.byteLength} bytes — text too long, aborting`);
+      }
+    }
 
     if (file == 735) {
       console.log(`Patching dungeon EXE table`);

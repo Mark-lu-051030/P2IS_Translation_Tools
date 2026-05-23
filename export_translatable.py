@@ -142,6 +142,21 @@ for fname in sorted(os.listdir(bt_dir), key=sort_key):
             'pages': [{'jp': p, 'zh': ''} for p in pages],
         })
 
+# 合并已有翻译（保留 zh 字段）
+if os.path.exists('all_translatable.json'):
+    old_data = json.load(open('all_translatable.json', encoding='utf-8'))
+    old_zh = {}
+    for e in old_data:
+        for i, p in enumerate(e.get('pages', [])):
+            if p.get('zh', '').strip():
+                old_zh[(e['id'], i)] = p['zh']
+    for e in entries:
+        for i, p in enumerate(e.get('pages', [])):
+            key = (e['id'], i)
+            if key in old_zh:
+                p['zh'] = old_zh[key]
+    print(f'合并了 {len(old_zh)} 条已有翻译')
+
 with open('all_translatable.json', 'w', encoding='utf-8') as f:
     json.dump(entries, f, ensure_ascii=False, indent=2)
 

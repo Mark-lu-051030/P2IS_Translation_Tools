@@ -80,7 +80,7 @@ def fix_sector(raw):
     return s
 
 # ── Main ──────────────────────────────────────────────────────────
-ISO = '/home/mark/Code/ROMHacking/games/Persona2IS/p2.bin'
+ISO = '/home/mark/Code/RomHacking/Game/P2IS_PSX/ogd/Persona 2 - Tsumi - Innocent Sin (Japan).bin'
 
 def fix_range(lba_start, lba_end):
     fixed = 0
