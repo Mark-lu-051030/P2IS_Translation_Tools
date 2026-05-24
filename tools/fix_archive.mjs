@@ -15,10 +15,10 @@
 
 import * as fs from "fs/promises";
 import * as fss from "fs";
-import * as scene from "./lib/scene_script.mjs";
-import * as lzss from "./lib/lzss.mjs";
-import * as cdimage from "./lib/cdimage.mjs";
-import * as archive from "./lib/archive.mjs";
+import * as scene from "../lib/scene_script.mjs";
+import * as lzss from "../lib/lzss.mjs";
+import * as cdimage from "../lib/cdimage.mjs";
+import * as archive from "../lib/archive.mjs";
 
 const SECTOR_SIZE = 0x930;   // 2352
 const BLOCK_SIZE  = 2048;

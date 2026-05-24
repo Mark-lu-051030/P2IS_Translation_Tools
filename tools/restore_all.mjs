@@ -3,7 +3,7 @@
  * 修复：文件 3（脚本测试残留）、文件 181（字符码=1 残留）、fileposdat。
  */
 import * as fs from "fs/promises";
-import * as cdimage from "./lib/cdimage.mjs";
+import * as cdimage from "../lib/cdimage.mjs";
 
 const SECTOR = 0x930;
 const BLOCK_OFF = 24;

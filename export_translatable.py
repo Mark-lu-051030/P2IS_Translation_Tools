@@ -6,7 +6,9 @@
 """
 import json, os, re
 
-raw_table = json.load(open('codetable.json', encoding='utf-8'))
+# 渲染 JP 必须用 codetable_og.json（原始日文映射）
+# codetable.json 含字体注入后的中文覆盖，用它渲染 JP 会把日文 slot 误显示成中文
+raw_table = json.load(open('codetable_og.json', encoding='utf-8'))
 table = {int(k): v for k, v in raw_table.items()}
 
 # 控制符 → tag 名
@@ -34,21 +36,53 @@ def cmd_to_tag(x):
         return f'<{name}:{",".join(map(str, args))}/>'
     return f'<{name}/>'
 
+def _items_to_text(items):
+    """把 items 直接渲染成一段文本（不分页），保留控制符 tag 和 char 字典查找。"""
+    out = []
+    for x in items:
+        if isinstance(x, list):
+            cmd = x[0]
+            if cmd == NEWLINE:
+                out.append('\n')
+            elif cmd == END:
+                break
+            else:
+                out.append(cmd_to_tag(x))
+        elif isinstance(x, int):
+            out.append(table.get(x, f'[?{x}]'))
+        elif isinstance(x, str):
+            out.append(x)
+    return ''.join(out)
+
+
+def split_meta_body(items):
+    """把 diag items 拆成 (meta_items, body_items)。
+
+    META 段 = 从开头到 [29, 1] 之前（[29, 1] 是 "切换到对话本体" 的分隔符）。
+    body = [29, 1] 之后所有内容。
+    某些 diag（如角色介绍）没有 [29, 1]，整段都是 META，body = []。
+    返回的 meta_items 已剥离开头的 [29, X] 控制码（保留纯文本/字符）。
+    """
+    sep_idx = None
+    for i, x in enumerate(items):
+        if isinstance(x, list) and len(x) >= 2 and x[0] == 29 and x[1] == 1:
+            sep_idx = i
+            break
+    if sep_idx is None:
+        meta_items, body_items = list(items), []
+    else:
+        meta_items, body_items = items[:sep_idx], items[sep_idx+1:]
+    # 剥离 META 头部的 [29, X]（"open box / set portrait" 控制码，不属于翻译内容）
+    if meta_items and isinstance(meta_items[0], list) and meta_items[0][0] == 29:
+        meta_items = meta_items[1:]
+    return meta_items, body_items
+
+
 def items_to_pages(items, has_meta=True):
-    """把 items 列表转成 page 字符串列表，保留控制符为 tag。"""
+    """把 items 列表转成 page 字符串列表，保留控制符为 tag。
+    仅处理对话 body 段（has_meta=True 时跳过 META；strtbl/battle 整段都是 body）。"""
     if has_meta:
-        # 跳过 META 段: [29,11]...[29,1]
-        text_started = False
-        start = 0
-        for i, x in enumerate(items):
-            if isinstance(x, list) and x[0] == 29:
-                if len(x) >= 2 and x[1] == 1:
-                    text_started = True
-                    start = i + 1
-                    break
-        if not text_started:
-            return []
-        items = items[start:]
+        _, items = split_meta_body(items)
 
     current = []
     pages   = []
@@ -77,6 +111,14 @@ def items_to_pages(items, has_meta=True):
     return [p for p in pages if p.strip()]
 
 
+def items_to_meta_text(items):
+    """从 diag items 提取 META 段文本（说话人名 / 角色介绍 / 标题等）。"""
+    meta_items, _ = split_meta_body(items)
+    if not meta_items:
+        return ''
+    return _items_to_text(meta_items).strip()
+
+
 def sort_key(fname):
     return [int(x) for x in re.findall(r'\d+', fname)]
 
@@ -96,20 +138,29 @@ for fname in sorted(os.listdir(script_dir), key=sort_key):
         items = dialogs.get(diag_name)
         if not isinstance(items, list):
             continue
-        pages = items_to_pages(items, has_meta=True)
-        if not pages:
+        meta_jp = items_to_meta_text(items)
+        pages   = items_to_pages(items, has_meta=True)
+        if not pages and not meta_jp:
             continue
-        entries.append({
+        entry = {
             'id':    f'script:{file_id}_{sub_id}:{diag_name}',
             'pages': [{'jp': p, 'zh': ''} for p in pages],
-        })
+        }
+        # 仅当 META 段含真实文本（不止控制码）时才加 meta 字段
+        if meta_jp:
+            entry['meta_jp'] = meta_jp
+            entry['meta_zh'] = ''
+        entries.append(entry)
 
 # ── string_table ─────────────────────────────────────────
+# 注意：文件名格式 {file}_{sub}_{table_idx}.json，同一 file/sub 下有多个 table。
+# 必须把 table_idx 编进 ID，否则 strtbl:138_0:0 会出现 3 次（来自 138_0_0, 138_0_1, 138_0_2）。
 st_dir = 'out/string_table'
 for fname in sorted(os.listdir(st_dir), key=sort_key):
     d       = json.load(open(f'{st_dir}/{fname}', encoding='utf-8'))
     file_id = d.get('file', '?')
     sub_id  = d.get('file_num', '?')
+    table_idx = fname.replace('.json', '').split('_')[-1]
     strings = d.get('strings', [])
 
     for idx, items in enumerate(strings):
@@ -119,16 +170,18 @@ for fname in sorted(os.listdir(st_dir), key=sort_key):
         if not pages:
             continue
         entries.append({
-            'id':    f'strtbl:{file_id}_{sub_id}:{idx}',
+            'id':    f'strtbl:{file_id}_{sub_id}_{table_idx}:{idx}',
             'pages': [{'jp': p, 'zh': ''} for p in pages],
         })
 
 # ── battle ───────────────────────────────────────────────
+# 同 strtbl：文件名第 3 个数是 table_idx，避免 ID 冲突
 bt_dir = 'out/battle'
 for fname in sorted(os.listdir(bt_dir), key=sort_key):
     d       = json.load(open(f'{bt_dir}/{fname}', encoding='utf-8'))
     file_id = d.get('file', '?')
     sub_id  = d.get('file_num', '?')
+    table_idx = fname.replace('.json', '').split('_')[-1]
     strings = d.get('strings', [])
 
     for idx, items in enumerate(strings):
@@ -138,24 +191,51 @@ for fname in sorted(os.listdir(bt_dir), key=sort_key):
         if not pages:
             continue
         entries.append({
-            'id':    f'battle:{file_id}_{sub_id}:{idx}',
+            'id':    f'battle:{file_id}_{sub_id}_{table_idx}:{idx}',
             'pages': [{'jp': p, 'zh': ''} for p in pages],
         })
 
-# 合并已有翻译（保留 zh 字段）
+# 合并已有翻译（保留 zh / meta_zh 字段）
+# 两阶段匹配：先按 (id, i) 精确匹配；不中再按 jp 内容唯一匹配（修过 ID 之后用）
 if os.path.exists('all_translatable.json'):
     old_data = json.load(open('all_translatable.json', encoding='utf-8'))
-    old_zh = {}
+    old_by_id = {}        # (id, i) → page zh
+    old_by_jp = {}        # jp_text → zh
+    old_meta_by_id = {}   # id → meta_zh
+    old_meta_by_jp = {}   # meta_jp → meta_zh
+    jp_zh_pairs = {}
+    meta_pairs  = {}
     for e in old_data:
         for i, p in enumerate(e.get('pages', [])):
-            if p.get('zh', '').strip():
-                old_zh[(e['id'], i)] = p['zh']
+            zh = p.get('zh', '').strip()
+            if zh:
+                old_by_id[(e['id'], i)] = zh
+                jp_zh_pairs.setdefault(p.get('jp', ''), set()).add(zh)
+        m_zh = (e.get('meta_zh') or '').strip()
+        if m_zh:
+            old_meta_by_id[e['id']] = m_zh
+            meta_pairs.setdefault(e.get('meta_jp', ''), set()).add(m_zh)
+    for jp, zhs in jp_zh_pairs.items():
+        if len(zhs) == 1: old_by_jp[jp] = next(iter(zhs))
+    for jp, zhs in meta_pairs.items():
+        if len(zhs) == 1: old_meta_by_jp[jp] = next(iter(zhs))
+
+    by_id_hits, by_jp_hits = 0, 0
+    meta_id_hits, meta_jp_hits = 0, 0
     for e in entries:
         for i, p in enumerate(e.get('pages', [])):
             key = (e['id'], i)
-            if key in old_zh:
-                p['zh'] = old_zh[key]
-    print(f'合并了 {len(old_zh)} 条已有翻译')
+            if key in old_by_id:
+                p['zh'] = old_by_id[key]; by_id_hits += 1
+            elif p.get('jp', '') in old_by_jp:
+                p['zh'] = old_by_jp[p['jp']]; by_jp_hits += 1
+        if 'meta_jp' in e:
+            if e['id'] in old_meta_by_id:
+                e['meta_zh'] = old_meta_by_id[e['id']]; meta_id_hits += 1
+            elif e['meta_jp'] in old_meta_by_jp:
+                e['meta_zh'] = old_meta_by_jp[e['meta_jp']]; meta_jp_hits += 1
+    print(f'合并 pages: {by_id_hits} 条按 ID + {by_jp_hits} 条按 jp 内容回退')
+    print(f'合并 meta:  {meta_id_hits} 条按 ID + {meta_jp_hits} 条按 jp 内容回退')
 
 with open('all_translatable.json', 'w', encoding='utf-8') as f:
     json.dump(entries, f, ensure_ascii=False, indent=2)

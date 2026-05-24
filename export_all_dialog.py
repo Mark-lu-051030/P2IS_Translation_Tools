@@ -1,7 +1,7 @@
 import json, os, re
 
-# 加载码表
-raw_table = json.load(open('codetable.json', encoding='utf-8'))
+# JP 渲染必须用 codetable_og.json（原始日文映射），否则字体注入后高位 slot 会被中文污染
+raw_table = json.load(open('codetable_og.json', encoding='utf-8'))
 table = {int(k): v for k, v in raw_table.items()}
 
 def decode_items(items):

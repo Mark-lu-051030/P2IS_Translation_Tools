@@ -27,7 +27,7 @@ export const builder = {
 export const handler = async (argv) => {
   let start = argv.start ;
   let end = argv.end ?? argv.start;
-  let cd = await cdimage.init();
+  let cd = await cdimage.init_readonly();  // 强制从 iso_backup 读，防止从被改的 live ISO 反向污染
   if (!fs.existsSync(argv.out)) fs.mkdirSync(argv.out);
   for (let i = start; i <= end; i++) {
     console.log(`${i}`);

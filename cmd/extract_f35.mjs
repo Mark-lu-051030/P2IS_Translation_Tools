@@ -15,7 +15,7 @@ export const builder = {
 export const handler = async (argv) => {
   let start = argv.start;
   let end = argv.end ?? argv.start;
-  let cd = await cdimage.init();
+  let cd = await cdimage.init_readonly();
   if (!fs.existsSync(argv.out)) fs.mkdirSync(argv.out);
   let strings = [];
   let file_buff = await cdimage.read_file(cd, 35);

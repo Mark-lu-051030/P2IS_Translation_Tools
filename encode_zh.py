@@ -94,21 +94,73 @@ def get_meta(orig_items):
             return meta
     return meta
 
+
+def get_meta_parts(orig_items):
+    """把 META 段拆成 (open_ctrl, body_items, close_ctrl, tail_items)。
+    open_ctrl  = 开头的 [29, X]（保持原 portrait/box-type 不变）
+    body_items = META 文本内容（chars + 内部控制码）
+    close_ctrl = 结尾的 [29, 1]（如果有）或 None
+    tail_items = close_ctrl 之后到 [3] 之前的所有 items（含可能的 [1]/[6]/[2]），用于纯 META diag
+    """
+    if not orig_items or not (isinstance(orig_items[0], list) and orig_items[0][0] == 29):
+        return None, [], None, []
+    open_ctrl = orig_items[0]
+    end_idx = None
+    for i in range(1, len(orig_items)):
+        x = orig_items[i]
+        if isinstance(x, list) and len(x) >= 2 and x[0] == 29 and x[1] == 1:
+            end_idx = i
+            break
+    if end_idx is None:
+        return open_ctrl, list(orig_items[1:]), None, []
+    # tail: close_ctrl 之后到结尾的 [3] 之前
+    tail = []
+    for x in orig_items[end_idx + 1:]:
+        if isinstance(x, list) and len(x) >= 1 and x[0] == 3:
+            break
+        tail.append(x)
+    return open_ctrl, list(orig_items[1:end_idx]), orig_items[end_idx], tail
+
+
+def encode_meta(meta_zh):
+    """把 meta_zh 文本编码成 items（chars + tags），不含两端的 [29, X] 控制码。"""
+    # 复用 encode_page 但不要它的结尾 wait/end_page 处理
+    items = []
+    tokens = re.split(r'(<[^>]+/?>)', meta_zh)
+    for tok in tokens:
+        if not tok:
+            continue
+        if tok.startswith('<'):
+            item = tag_to_item(tok)
+            if item is not None:
+                items.append(item)
+        else:
+            for ch in tok:
+                if ch == '\n':
+                    items.append([1])
+                elif ch in rev:
+                    items.append(rev[ch])
+                else:
+                    print(f'  meta 找不到字符: {repr(ch)}')
+    return items
+
 # ── 加载翻译 ──────────────────────────────────────────────────
 trans_data = json.load(open('all_translatable.json', encoding='utf-8'))
-# 只处理 script 类型、有 zh 内容的
-trans_map = {}  # "file_file_num:diag_name" → [zh_page, ...]
+# trans_map: "file_sub:diag" → {pages: [...], meta_zh: str or None}
+trans_map = {}
 for entry in trans_data:
     if not entry['id'].startswith('script:'):
         continue
     pages = [p['zh'] for p in entry['pages'] if p.get('zh', '').strip()]
-    if not pages:
+    meta_zh = (entry.get('meta_zh') or '').strip()
+    if not pages and not meta_zh:
         continue
-    # id 格式: script:3_3:diag0
     rest = entry['id'][len('script:'):]
-    trans_map[rest] = pages
+    trans_map[rest] = {'pages': pages, 'meta_zh': meta_zh}
 
-print(f'有翻译的对话: {len(trans_map)} 条')
+n_pages = sum(1 for v in trans_map.values() if v['pages'])
+n_meta  = sum(1 for v in trans_map.values() if v['meta_zh'])
+print(f'有翻译的对话: {len(trans_map)} 条（含 body: {n_pages}，含 meta: {n_meta}）')
 
 # ── 处理脚本文件 ──────────────────────────────────────────────
 src_dir = 'out/scripts'
@@ -128,20 +180,41 @@ for fname in sorted(os.listdir(src_dir)):
         key = f'{file_id}_{sub_id}:{diag_name}'
         if key not in trans_map:
             continue
-        zh_pages = trans_map[key]
+        if not isinstance(orig_items, list):
+            print(f'  跳过 {key}: 原 items 不是 list')
+            continue
+        tr = trans_map[key]
+        zh_pages = tr['pages']
+        meta_zh  = tr['meta_zh']
 
-        meta = get_meta(orig_items or [])
-        new_items = list(meta)
+        # 解析原 META 四段：open_ctrl + body + close_ctrl + tail（close/tail 可能为空）
+        open_ctrl, orig_meta_body, close_ctrl, meta_tail = get_meta_parts(orig_items)
 
-        for page_text in zh_pages:
-            new_items += encode_page(page_text)
-            new_items.append([6])       # CMD_WAIT（等待按键）
-            new_items.append([2])       # CMD_END_PAGE
+        new_items = []
+        if open_ctrl is not None:
+            new_items.append(open_ctrl)
+            # META body：有 meta_zh 就用译文，没有就保留原日文 chars
+            new_items += encode_meta(meta_zh) if meta_zh else orig_meta_body
+            if close_ctrl is not None:
+                new_items.append(close_ctrl)
+
+        # 对话本体
+        if zh_pages:
+            for page_text in zh_pages:
+                new_items += encode_page(page_text)
+                new_items.append([6])       # CMD_WAIT
+                new_items.append([2])       # CMD_END_PAGE
+        elif open_ctrl is not None and meta_tail:
+            # 纯 META（角色介绍类）：没有 body pages，保留原始 tail（含 [6] CMD_WAIT 等）
+            new_items += meta_tail
 
         new_items.append([3])           # CMD_RET
         script['dialogs'][diag_name] = new_items
         changed = True
-        print(f'  编码: {key}')
+        tags = []
+        if meta_zh: tags.append('+meta')
+        if zh_pages: tags.append(f'+{len(zh_pages)}p')
+        print(f'  编码: {key} ({" ".join(tags)})')
 
     if changed:
         out_path = f'{dst_dir}/{fname}'

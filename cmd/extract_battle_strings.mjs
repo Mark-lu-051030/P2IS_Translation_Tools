@@ -46,7 +46,7 @@ let search_for_string_table = (buff) => {
 export const handler = async (argv) => {
   let start = argv.start;
   let end = argv.end ?? argv.start;
-  let cd = await cdimage.init();
+  let cd = await cdimage.init_readonly();
   if (!fs.existsSync(argv.out)) fs.mkdirSync(argv.out);
   for (let i = start; i <= end; i++) {
     console.log(`${i}`);

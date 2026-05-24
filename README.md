@@ -50,7 +50,8 @@ const size  = fileposdat.readUInt32LE(N * 8 + 4);  // 字节数
 
 | 文件号 | 文件名 | 内容 |
 |--------|--------|------|
-| 86 | F0086.BIN | 字体数据 |
+| **59** | — | **对话字体（LZSS 压缩，2 个 sub-file，每个解压 65520 字节）** ⭐ |
+| 86 | F0086.BIN | 字体的"参考副本"——格式相同但**游戏运行时不读取**（曾误以为是字体源） |
 | 181 | — | 开头霸凌场景脚本 |
 | 3 | — | 学校走廊场景脚本 |
 
@@ -189,9 +190,19 @@ Items 格式：
 
 ---
 
-### 层级 7：字体文件（F0086.BIN，文件 86）
+### 层级 7：字体文件（文件 59，sub-file 0）⭐
 
-**平铺二进制，不是 archive 格式**，直接存于 ISO 扇区，可以直接用 `_write_sectors` 写回，不需要打包。
+> **⚠️ 重要修正**：之前以为字体在 `F0086.BIN`（文件 86），实际**完全错了**。游戏运行时根本不读 F0086.BIN，它只是格式相同的"参考副本"。真正使用的字体在**文件 59 sub-file 0**，LZSS 压缩。详见"五、踩过的坑"中的字体定位事件。
+
+**文件结构：**
+
+```
+文件 59（archive，2 个 sub-file）:
+  sub-file 0:  LZSS 压缩，解压后 65520 字节  ← 对话字体源
+  sub-file 1:  LZSS 压缩，解压后 65520 字节  ← 备用/异体字（用途待确认）
+```
+
+**解压后的格式与 F0086.BIN 完全相同：**
 
 ```
 偏移 0x480 开始：字形 bitmap 数组
@@ -201,8 +212,42 @@ Items 格式：
 
 字符码 N → 第 N 个字形槽。文件共有 3576 个槽（0–3575）：
 - **槽 0–2575**：原版日文字形（其中 27 个空槽）
-- **槽 2576–2693**：我们注入的中文字形（共 304 个汉字）
+- **槽 2576–2693**：可注入的中文字形位置
 - **槽 2694–3575**：未使用
+
+**修改流程**（共享助手在 `pylib/p2is.py`）：
+
+```python
+from pylib.p2is import (read_sectors, write_sectors,
+                       lzss_decompress, lzss_compress,
+                       archive_subfile_offsets, read_filepos, get_file_entry)
+# 1. 读文件 59 archive → archive_subfile_offsets() 找 sub-file 0
+# 2. lzss_decompress → 65520 字节
+# 3. data[0x480 + slot*18 : +18] = new_bitmap
+# 4. lzss_compress（保留原 tag 字节 sub[0:4]！否则游戏崩溃）
+# 5. 写回 archive → write_sectors → fix_ecc.py
+```
+
+参考实现：
+- `inject_chinese_font.py`（主脚本，批量注入所有 zh 字段中的汉字）⭐
+- `tools/inject_grass_into_file59.py`（最小示例：只注入一个 草 字到 slot 16）
+
+**已验证的渲染管道：**
+1. 游戏启动 → 加载文件 59 sub-file 0 → LZSS 解压到 RAM `0x001EF000`
+2. 渲染对话时，从 `0x001EF000 + 0x480 + code*18` 读 18 字节 1bpp bitmap
+3. 转换为 VRAM 纹理（具体 VRAM 位置和转换路径未深究）
+
+**容量策略**（已解决）：
+- 不再往**空槽**（>2575）写——压缩骤增（304 字符会溢出 1898 字节）
+- 改为**替换高位日文 slot 2575↓**——压缩开销几乎为零（304 字符仅 +2 字节）
+- 数据：原 44790 字节，替换 304 汉字后 44796 字节，可用 45056 字节
+- 代价：被覆盖的日文字符在未翻译对话里显示为对应中文（最终目标即全中文，可接受）
+
+**LZSS bug 修复**（2026-05-23）：
+- 原 `find_backref` 贪心匹配越过数据末尾，产生越界 backref
+- 游戏的 PS1 解码器宽容（写越界静默忽略）；JS Buffer 也宽容；**Python 严格 → IndexError**
+- 修复：`max_len = min(128, n - iptr)` 不让匹配越界（`pylib/p2is.py` 和 `lib/lzss.mjs` 都改了）
+- 影响：所有自有 round-trip 流程（验证、re-apply）现在严格正确
 
 ---
 
@@ -219,28 +264,77 @@ Items 格式：
 | `msg_commands.mjs` | 控制码常量定义 |
 | `scene_script.mjs` | 场景脚本解析（`parse_script` 可用，`compile_script` 有 broadcast bug 不可用） |
 
-### 根目录工具脚本
+### 目录结构
+
+```
+P2IS_Translation_Tools/
+├── README.md
+├── (日常使用的入口脚本和数据文件，见下表)
+├── lib/          ← 核心库（archive.mjs, lzss.mjs, cdimage.mjs, msg_script.mjs 等）
+├── cmd/          ← 原 p2ep_tool 的子命令（extract.mjs, insert.mjs 等）
+├── sh/           ← Python 辅助脚本（build_codetable.py 等）
+├── out/          ← 生成的输出（scripts/, scripts_zh/, battle/, f35/, string_table/）
+├── verify/       ← 验证/调试脚本
+├── tools/        ← 一次性工具（restore, 单字注入示例等）
+├── experiments/  ← 历史实验脚本（已知坏的/过时的，留作教训）
+└── artifacts/    ← 生成的产物（PNG 预览、提取的 bin），gitignored
+```
+
+### 根目录：日常管道脚本
 
 | 文件 | 作用 | 状态 |
 |------|------|------|
-| `fix_ecc.py` | 修复 ISO ECC 校验码，每次写 ISO 后必须运行 | ✅ |
-| `inject_chinese_font.py` | 收集汉字 → 渲染 bitmap → 写入字体 → 写回 ISO → 修 ECC | ✅ |
-| `encode_zh.py` | 把翻译文本编码成字符码 items，输出到 `out/scripts_zh/` | ✅ |
-| `apply_zh.mjs` | 把编码好的对话用二进制补丁写回 ISO（核心写回工具） | ✅ |
-| `export_all_dialog.py` | 提取全部日文对话到 `all_dialog.json` | ✅ |
-| `export_translatable.py` | 生成 `all_translatable.json`（含 jp / zh 字段） | ✅ |
-| `restore_all.mjs` | 从备份 ISO 还原文件 3 和 181（出问题时用） | ✅ |
-| `codetable.json` | 字符码 → 字符 的完整映射（2694 条） | ✅ |
-| `all_translatable.json` | 翻译主文件，每条有 jp / zh 字段 | 翻译中 |
+| **`build.py`** | **一键完整管道**：还原 ISO → 注字体 → 编码 zh → 写回 ISO → 修 ECC → 报告 | ⭐ 主入口 |
+| `inject_chinese_font.py` | **批量字体注入**：扫 zh + meta_zh 字段→渲染→写入文件 59 sub-file 0→LZSS 重压缩→修 ECC | ✅ |
+| `encode_zh.py` | 把翻译文本编码成字符码 items（含 META 段处理），输出到 `out/scripts_zh/` | ✅ |
+| `apply_zh.mjs` | 把编码好的对话用二进制补丁写回 ISO（核心写回工具，自动修 ECC） | ✅ |
+| `fix_ecc.py` | 修复 ISO ECC 校验码（apply_zh.mjs 内部已调用） | ✅ |
+| `export_translatable.py` | 生成 `all_translatable.json`（含 jp / zh / meta_jp / meta_zh 字段）。**用 codetable_og.json 渲染 JP** 防止被字体注入后的中文 slot 污染 | ✅ |
+| `export_all_dialog.py` | （历史）纯文本对话提取；已不在主管道里 | 备用 |
+| `p2ep_tool.mjs` | 原 p2ep_tool 入口，调用 `cmd/` 子命令（extract_script 等都走只读 ISO） | ✅ |
+| `codetable.json` | 字符码 → 字符 映射（每次 inject 字体后会更新，含中文覆写） | ✅ |
+| `codetable_og.json` | 原版日文 codetable 基线（用于 JP 渲染、防污染） | ✅ |
+| `all_translatable.json` | 翻译主文件，每条有 id / pages[jp,zh] / meta_jp / meta_zh | 翻译中 |
+| `conf.json` | 本地配置（**gitignored**）。复制 `conf.json.example` 起步，必须填 `iso` 和 `iso_backup` | 本地配置 |
+| `fusion-pixel-12px.otf` | 像素中文字体（OFL-1.1，[TakWolf/fusion-pixel-font](https://github.com/TakWolf/fusion-pixel-font)），用于渲染 12×12 bitmap | ✅ |
 
-### 诊断 / 验证脚本
+### `pylib/` Python 共享助手
+
+| 文件 | 作用 |
+|------|------|
+| `pylib/p2is.py` | ISO 扇区读写、LZSS 编解码、archive 解析（Python 端字体注入用） |
+
+### `verify/` 诊断 / 验证
 
 | 文件 | 作用 |
 |------|------|
 | `verify_injection.mjs` | 读取主 ISO，验证对话字节和字体 bitmap 是否正确写入 |
 | `verify_full.mjs` | 对比主 ISO vs 备份 ISO 的 diag0，确认写入生效 |
-| `test_lowslot.py` | 把中文字形复制到低编号空槽（1876）测试游戏是否有槽号上限 |
-| `patch_dialog_181.mjs` | 测试用：把 file 181 diag0 全改为字符码 16（已验证管道可用） |
+| `verify_diag0.mjs` | 验证 file 3 diag0（早期诊断用） |
+| `debug_sub8.mjs` | 检查 file 181 sub-file 8 结构 |
+
+### `tools/` 一次性工具
+
+| 文件 | 作用 |
+|------|------|
+| `inject_grass_into_file59.py` | 字体注入的最小验证示例（只注入一个 草 到 slot 16） |
+| `fix_diag0_safe.py` | 修改 file 181 diag0 单个字符码的安全模板（保留 LZSS tag） |
+| `restore_all.mjs` | 从备份 ISO 还原所有写过的文件 |
+| `restore_file3.mjs` | 单独还原 file 3 |
+| `font_extractor.mjs` | 旧字体提取（基于 F0086.BIN 的误解，已无用但留作参考） |
+| `compare_binary.mjs` | 比较两个 ISO 的差异 |
+| `fix_archive.mjs` | archive 结构修复尝试（实验性） |
+| `extract_font_candidates.py` | 从 ISO 提取 F0086.BIN 和 F0140（调试用） |
+
+### `experiments/` 历史实验（**勿用，留作教训**）
+
+| 文件 | 为什么不该用 |
+|------|--------------|
+| `patch_dialog_181.mjs` | LZSS tag byte 2 没保留，导致游戏崩溃 |
+| `patch_dialog_test.mjs`、`patch_dialog_binary.mjs` | 早期试错版本 |
+| `test_lowslot.py` | 测试槽号上限的假设（结论：F0086.BIN 根本不被读取） |
+| `test_passthrough.mjs`、`test_export.py` | 早期管道验证 |
+| `codetable_checker.py`、`pending_grid.py`、`missing_stats.py`、`unknown_in_context.py`、`decode.py` | 一次性数据分析脚本 |
 
 ---
 
@@ -249,17 +343,27 @@ Items 格式：
 ### 阶段 A：准备工作（只做一次）
 
 ```bash
-# 1. 备份原始 ISO（出问题时用 restore_all.mjs 恢复）
+# 1. 复制 conf.json.example → conf.json，填入：
+#    "iso"        = 工作 ISO（会被 build.py 修改）
+#    "iso_backup" = 干净原版 ISO（只读，用于 extract / restore；不允许被任何工具改写）
 
-# 2. 提取日文脚本
-node p2ep_tool.mjs extract_script
+# 2. 提取日文脚本（强制从 iso_backup 读，防止从被改的 live ISO 反向污染）
+node p2ep_tool.mjs extract_script 0 880
 # → 生成 out/scripts/ 下的 JSON 文件
-# → 确保每个 JSON 有 "file": N, "file_num": M 字段
 
-# 3. 生成可翻译列表
+# 3. 提取 string_table / battle
+node p2ep_tool.mjs extract_string_tables 0 880
+node p2ep_tool.mjs extract_battle_strings 0 880
+
+# 4. 生成可翻译列表
 python3 export_translatable.py
 # → 生成 all_translatable.json
 ```
+
+> ⚠️ **污染预防**：所有 `extract_*` 命令都走 `cdimage.init_readonly()`，**只读 iso_backup**。
+> 如果手工或第三方脚本从 live ISO 重新提取，会把已翻译的中文 item codes 写回 `out/scripts/`，
+> 之后 `export_translatable.py` 渲染出来的 jp 字段就是中文 → 数据污染。
+> `build.py` 启动时会跑 sanity check 检测这种污染。
 
 ### 阶段 B：翻译
 
@@ -286,9 +390,12 @@ python3 export_translatable.py
 python3 inject_chinese_font.py
 ```
 
-自动完成：扫描 `zh` 字段中的汉字 → 渲染 12×12 bitmap → 写入 F0086.BIN → 写回 ISO → 运行 `fix_ecc.py`。
+自动完成：扫描 zh 字段中的汉字 → 渲染 12×12 bitmap → LZSS 解压文件 59 sub-file 0 → **替换高位日文 slot**（2575 → 100 往下）→ LZSS 重压缩 → 写回 ISO → 修 ECC → 重建 `codetable.json`。
 
-> ⚠️ 每次新增汉字后都要重新运行，保证字形和编码表同步。
+**替换策略**（关键发现）：往**空槽**（>2575）写会让 LZSS 失去大段零的 backref，压缩骤增；往**已有日文 slot** 写则压缩开销几乎为零（验证：304 汉字仅 +2 字节）。代价：被覆盖的日文字符在未翻译的对话里会显示成对应中文（属正常 trade-off，最终目标就是全中文）。
+
+> ⚠️ 每次新增汉字后都要重新运行，保证字形和编码表同步。  
+> ⚠️ codetable.json 会被重建，跑前会自动从 codetable_og.json 作基线。
 
 ### 阶段 D：编码对话
 
@@ -345,6 +452,9 @@ node verify_full.mjs
 | `encode_zh.py` 不处理 181_8 | `out/scripts/181_8.json` 缺少 `file` 和 `file_num` 字段（均为 null） | 手动补充：`"file": 181, "file_num": 8` |
 | `apply_zh.mjs` 所有对话解析失败 | 读 `instr_ptr + 4` 处的值当作对话偏移，漏掉一次解引用 | 改为先读 `arg_section_ptr`，再 `readUInt32LE(arg_section_ptr)` |
 | 修改后游戏仍显示日文 | 从游戏中途的存档加载，场景数据已在 RAM 中，ISO 修改无效 | 从标题画面开始新游戏 |
+| **修改字体后游戏渲染不变** | **以为 F0086.BIN 是字体源，实际游戏完全不读取它！真正的字体在文件 59 sub-file 0（LZSS 压缩）** | 改写所有字体注入工具到文件 59；F0086.BIN 是无用的"参考副本" |
+| 改 file 181 sub-file 8 后游戏黑屏崩溃 | `patch_dialog_181.mjs` 重压缩时用 `Buffer.allocUnsafe` 留下未初始化字节，把 sub-file tag 字节 2（sub-file 序号 0x08）变成 0x00，游戏无法识别 sub-file 8 | 显式保留原 tag：`recomp[0:4] = sub.readUInt32LE(0)`，并在 Python 中直接覆盖 `recomp[0:4] = tag_bytes` |
+| `patch_dialog_181.mjs` 把所有字符码改成 16 导致脚本损坏 | `diag.map(item => typeof item === "number" ? 16 : item)` 把控制码参数（独立 number）和真字符码混淆了 | 只改特定位置的字符码，控制码参数（虽是 number）必须保持原值 |
 
 ---
 
@@ -352,32 +462,69 @@ node verify_full.mjs
 
 **已完成：**
 - ✅ 完整二进制补丁管道（已在游戏内验证）
-- ✅ 中文字体注入（304 个汉字，字符码 2576–2693）
-- ✅ `apply_zh.mjs`：自动从 `scripts_zh/` 写回 ISO
-- ✅ 翻译主文件 `all_translatable.json`（含测试译文）
-- ✅ 字符码表 `codetable.json`（2694 条）
+- ✅ **字体源定位**：确认对话字体在**文件 59 sub-file 0**（不是 F0086.BIN！）
+- ✅ **字体注入**：`inject_chinese_font.py` 批量注入（扫 zh + meta_zh，含 LZSS 重压缩+保留 tag）
+- ✅ **一键管道**：`build.py` 整合还原/字体/编码/apply/ECC，~2-30s 完成
+- ✅ **META 段处理**：encode_zh.py 正确处理纯 META diag（角色介绍）保留 CMD_WAIT
+- ✅ **容量策略**：替换高位日文 slot 2575↓ 而不是写空槽，304 汉字仅 +2 字节压缩开销
+- ✅ **污染防御**（2026-05-24）：所有 extract 走 `init_readonly` 只读 iso_backup；export 用 codetable_og 渲染 JP；build.py 启动 sanity check
 
 **待解决：**
-- ⚠️ 验证游戏是否支持字符码 ≥ 2576（需从新游戏测试；若不支持，改用空闲低编号槽）
-- ⚠️ `apply_zh.mjs` 目前只支持**长度不变**的替换（中文字数 ≠ 日文字数时需要额外处理）
-- ⚠️ 大量翻译工作（25000+ 条目）
+- ⚠️ 大量翻译工作（26000+ 条目，目前 zh 全空）
+- ⚠️ `apply_zh.mjs` 目前只支持**长度不变**的替换（中文字数 > 原槽时跳过，写入 build_report）
+- ⚠️ 部分 diag 在 extract 阶段就被 parse 成 `false`（详见 build_report 的 not_array 跳过列表）
+- ⚠️ 文件 59 sub-file 1（备用 65520 字节，用途待确认）暂未使用
+
+### 字体定位事件回顾（2026-05-23）
+
+为了排查"修改字体后游戏渲染不变"的问题，我们做了一系列实验：
+1. 把 F0086.BIN slot 16（い）改成 草 → 游戏仍显示 い
+2. 把 F0086.BIN slot 63（？）改成全 0xFF（实心黑块）→ 游戏仍正常显示 ？
+3. 验证 ISO 字节、ECC、扇区读取都没问题
+4. 在 DuckStation 中 RAM 搜索 草 字节 `88 E0 7F 88 C0 1F FC 41` → **完全没找到**
+5. 在整个 ISO 中搜索 RAM `0x001EF5A0` 看到的字节 `81 10 10 01 11 20 01 12` → 出现在 **3 个位置**：
+   - F0086.BIN 文件 86（slot 16，已知）
+   - **文件 59 sub-file 0**（解压后 offset 0x5A2）⭐
+   - **文件 59 sub-file 1**（解压后 offset 0x4A6）
+6. 文件 59 sub-file 0 解压后正好 65520 字节，与 F0086.BIN 完全相同
+7. 修改文件 59 sub-file 0 的 slot 16 → 游戏成功显示 草 ✅
+
+**教训：以后排查"修改无效"问题，第一步永远是验证 RAM/VRAM 实际是否包含修改后的数据。**
 
 ---
 
 ## 六、日常工作流（快速参考）
 
 ```bash
-# 1. 编辑翻译
-#    编辑 all_translatable.json，填写 zh 字段
+# 1. 编辑 all_translatable.json：填写 zh / meta_zh 字段
 
-# 2. 注入字体（有新汉字时才需要）
-python3 inject_chinese_font.py
+# 2. 一键完整管道（推荐，~2-30s 完成）
+python3 build.py
+# 等价于：还原 ISO → 注字体 → encode → apply（每个 file/sub）→ 修 ECC → 报告
 
-# 3. 编码
-python3 encode_zh.py
+# 常用参数：
+python3 build.py --no-restore   # 增量构建，不还原 ISO
+python3 build.py --no-font      # 跳过字体注入（仅 zh 文本变了）
+python3 build.py --only 181,3   # 只 apply 指定 file_id
 
-# 4. 写回 ISO（按提示执行 ECC 命令）
-node apply_zh.mjs 181 8
+# 3. 启动模拟器，从标题画面开新游戏（不能加载存档！）
+```
 
-# 5. 启动模拟器，从新游戏开始测试
+### 手动单步（高级用法）
+
+```bash
+python3 inject_chinese_font.py          # 仅注字体
+python3 encode_zh.py                    # 仅 encode
+node apply_zh.mjs 181 8                 # 仅 apply 单个 file/sub
+```
+
+### 污染检测 & 恢复
+
+```bash
+# 自动告警：build.py 启动会扫 all_translatable.json 的 jp 字段
+# 如果发现非日文 codetable 的字符（中文混入）→ 红字告警
+
+# 人工恢复：从 backup ISO 重新提取 + 重生成
+node p2ep_tool.mjs extract_script 0 880 -o out/scripts
+python3 export_translatable.py   # 旧 zh 自动按 id 回灌
 ```

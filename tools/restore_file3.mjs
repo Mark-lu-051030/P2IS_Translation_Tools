@@ -4,8 +4,8 @@
  * 通过后可在此基础上修改对话区进行翻译。
  */
 import * as fs from "fs/promises";
-import * as archive from "./lib/archive.mjs";
-import * as cdimage from "./lib/cdimage.mjs";
+import * as archive from "../lib/archive.mjs";
+import * as cdimage from "../lib/cdimage.mjs";
 
 const SECTOR = 0x930;
 const BLOCK_OFF = 24;
