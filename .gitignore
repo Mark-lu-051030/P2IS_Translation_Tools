@@ -12,3 +12,7 @@ artifacts/
 out/build_report/
 out/scripts_zh/
 out/scripts.bak.*/
+
+# 批量翻译切片产物（spliter.py 可重新生成）
+translatable/all_translatable.json
+translatable/translatable_*.json

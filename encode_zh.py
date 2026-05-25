@@ -171,8 +171,14 @@ updated_files = set()
 
 for fname in sorted(os.listdir(src_dir)):
     script = json.load(open(f'{src_dir}/{fname}', encoding='utf-8'))
-    file_id = script.get('file', '?')
-    sub_id  = script.get('file_num', '?')
+    # 优先用 script 内字段；若缺失（旧 extract / 手改文件）则从文件名 fall back
+    file_id = script.get('file')
+    sub_id  = script.get('file_num')
+    if file_id is None or sub_id is None:
+        m = re.match(r'^(\d+)_(\d+)\.json$', fname)
+        if m:
+            file_id = int(m.group(1))
+            sub_id  = int(m.group(2))
     dialogs = script.get('dialogs', {})
     changed = False
 
