@@ -225,8 +225,9 @@ try {
   console.log(`回退后重压缩: ${recomp.byteLength} bytes`);
   patched = archive.patch_archive_inplace(arch_buf, { [SUB_ID]: recomp });
 }
+// 用 cdimage.init() 自带的 fileposdat（读自 working ISO，可能含 ijc.py 对 file 59 的更新）
+// 不要用 backup 的 fileposdat 覆盖——那会把 file 59 的扩容入口刷回原状
 const cd = await cdimage.init();
-cd.fileposdat = fileposdat;
 await cdimage.write_file(cd, FILE_ID, patched);
 await cdimage.close(cd);
 

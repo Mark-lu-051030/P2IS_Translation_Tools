@@ -40,10 +40,13 @@ TRANS_JSON    = os.path.join(ROOT, 'all_translatable.json')
 FIX_ECC    = os.path.join(ROOT, 'fix_ecc.py')
 FONT_FILE  = 59         # 文件 59 = 对话字体 archive
 FONT_SUB   = 0          # sub-file 0 = LZSS 压缩的字形数据
-# 槽位分配策略：从 ALLOC_TOP 往下替换已有日文槽位（避免压缩膨胀）
-# 替换现有 bitmap 几乎不增加压缩大小；写入空槽（>2575）会使 LZSS 失去大段零的 backref
+# 槽位分配策略：从 ALLOC_TOP 往下替换 og 已有日文槽位（避免压缩膨胀）
+# ⚠ 关键：写入 og 没用过的空槽（slot 2575+）会让 sub-file 0 LZSS 重压缩字节数膨胀，
+#         一旦超过 45056 字节（22 sectors）触发 PSX 端字体加载 bug，游戏黑屏卡在 atlus 后。
+#         SLPS 内部有未找到的硬编码假设 sub-file 0 ≤ 22 sectors，1E patch 没改到它。
+#         所以 ALLOC_TOP 必须 ≤ 2574，只覆盖 og 已用 kanji。
 # 副作用：被覆盖的日文字符在未翻译的对话里会显示成对应中文（属正常 trade-off）
-ALLOC_TOP    = 3575     # 字库共有 0-3575 槽，2694-3575 是空槽（写它会让 LZSS 压缩膨胀但能扩容量）
+ALLOC_TOP    = 2574     # og 最高 slot（不写 2575+ 空槽，避免触发 45056 字节边界 bug）
 ALLOC_BOTTOM = 100      # 不低于这里（保护常用标点和 UI 字符）
 
 # SECTOR/BLOCK 常量、扇区 IO、LZSS、archive 解析 都从 pylib.p2is 引入
@@ -75,21 +78,23 @@ def render_char(ch):
 # ── 主流程 ──────────────────────────────────────────────────────────────────
 
 def main():
-    # 1. 收集需要注入的汉字
+    # 1. 收集需要注入的汉字 + 统计出现频率（容量不够时按频率取舍）
     print('[1/7] 扫描 all_translatable.json 中的汉字...')
     data = json.load(open(TRANS_JSON, encoding='utf-8'))
-    needed = set()
+    from collections import Counter
+    freq = Counter()
     def collect_chars(text):
         clean = re.sub(r'<[^>]+/?>', '', text)
         for c in clean:
             if '一' <= c <= '鿿' or '㐀' <= c <= '䶿':
-                needed.add(c)
+                freq[c] += 1
     for entry in data:
         for page in entry.get('pages', []):
             collect_chars(page.get('zh', '') or '')
         collect_chars(entry.get('meta_zh', '') or '')
-    needed = sorted(needed)
-    print(f'      需要 {len(needed)} 个汉字')
+    # 按频率从高到低排序，频率相同按 unicode 顺序
+    needed = sorted(freq.keys(), key=lambda c: (-freq[c], c))
+    print(f'      需要 {len(needed)} 个汉字（按频率排序，高频在前）')
 
     if not needed:
         print('没有汉字需要注入，退出。')
@@ -111,6 +116,8 @@ def main():
     print(f'      og 共用字复用: {len(og_reused)} 字（不需要 inject bitmap）')
 
     # 优先级 2: 复用上次 CN inject
+    # 关键过滤：slot 不能与 og_reused 冲突（否则上次污染的 codetable.json 会传染过来）
+    og_reused_slots = set(og_reused.values())
     ct_existing = {}
     try:
         ct_cur = json.load(open(CODETABLE, encoding='utf-8'))
@@ -118,6 +125,7 @@ def main():
                        if isinstance(v, str) and len(v) == 1
                        and v in needed_set and int(k) <= ALLOC_TOP
                        and v not in og_reused
+                       and int(k) not in og_reused_slots  # ← 防止 og 槽被覆盖
                        and (k not in ct_og or ct_og[k] != v)}
     except Exception:
         pass
@@ -129,18 +137,28 @@ def main():
     for ch, slot in ct_existing.items():
         assignments[ch] = slot
 
-    # 优先级 3: 新分配
+    # 优先级 3: 新分配（按频率从高到低 — needed 已排好序）
+    # ⚠ 关键：只覆盖 og 里是 kanji 的 slot，保护所有 ASCII/数字/标点（如 '~' slot 126、'。'、',' 等）
+    #         否则 encode_zh.py 会找不到这些字符。
+    # 容量不够时跳过低频字符（记录到 skipped_chars）
+    def is_kanji_slot(slot):
+        og_ch = ct_og.get(str(slot))
+        if not og_ch or len(og_ch) != 1:
+            return False
+        return '一' <= og_ch <= '鿿' or '㐀' <= og_ch <= '䶿'
+
     slot = ALLOC_TOP
     new_alloc_count = 0
+    skipped_chars = []
     for ch in needed:
         if ch in assignments:
             continue
-        while slot in used_slots:
+        # 找下一个可用 slot：未用过 + og 里是 kanji
+        while slot >= ALLOC_BOTTOM and (slot in used_slots or not is_kanji_slot(slot)):
             slot -= 1
         if slot < ALLOC_BOTTOM:
-            print(f'错误：槽位用到 {ALLOC_BOTTOM} 以下了（已分配 {len(assignments)} 字），')
-            print(f'      调整 ALLOC_BOTTOM 或减少汉字数量。')
-            sys.exit(1)
+            skipped_chars.append(ch)
+            continue
         assignments[ch] = slot
         used_slots.add(slot)
         new_alloc_count += 1
@@ -152,6 +170,17 @@ def main():
     print(f'      槽位范围: {min(used_in_run)} ~ {max(used_in_run)}（{len(used_in_run)} 个 mapping）')
     print(f'      og 复用 {len(og_reused)} + 旧 CN 复用 {len(ct_existing)} + 新分配 {new_alloc_count}')
     print(f'      实际需要 inject bitmap 的字: {len(inject_chars)}')
+    if skipped_chars:
+        # 把 skipped 字符写到文件供 encode_zh.py 检查
+        skip_log = os.path.join(ROOT, 'out', 'skipped_chars.txt')
+        os.makedirs(os.path.dirname(skip_log), exist_ok=True)
+        with open(skip_log, 'w', encoding='utf-8') as f:
+            for ch in skipped_chars:
+                f.write(f'{ch}\t{freq[ch]}\n')
+        print(f'      ⚠ {len(skipped_chars)} 字超容量被跳过（按频率从低到高）')
+        sample = ''.join(skipped_chars[:30])
+        print(f'        最低频 30 字: {sample}')
+        print(f'        完整列表已写: out/skipped_chars.txt')
 
     # 3. 读取文件 59 archive
     print('[3/7] 读取文件 59 archive...')
@@ -188,44 +217,21 @@ def main():
     struct.pack_into('<I', recomp, 8, len(decompressed))
     print(f'      重压缩 sub-file 0: {len(recomp)} 字节 (原 {sub0_len})')
 
-    # === 检查能否在原位置直接放下 ===
+    # === 容量策略 ===
+    # 必须原位写入 — sub-file 1 在 22 sectors 偏移处是 SLPS 硬编码假设，不能移动。
+    # 如果重压缩后 sub-file 0 超过这个容量，说明 ALLOC_TOP 设错了（应 ≤2574 不写空槽）。
     in_place_available = subs[1][0] - sub0_off if len(subs) > 1 else size59 - sub0_off
-    if len(recomp) <= in_place_available:
-        # 简单情况：sub-file 0 没爆，原位写回，sub-file 1 不动
-        print(f'      sub-file 0 容量 OK ({len(recomp)} ≤ {in_place_available})，sub-file 1 保持原样')
-        arch_patched = bytearray(arch)
-        arch_patched[sub0_off:sub0_off + in_place_available] = bytes(in_place_available)
-        arch_patched[sub0_off:sub0_off + len(recomp)] = recomp
-        assert len(arch_patched) == size59
-    else:
-        # === 扩容方案：把 sub-file 1 压成最小（全零）腾出空间给 sub-file 0 ===
-        print(f'      ⚠ sub-file 0 超原槽 ({len(recomp)} > {in_place_available})，启用 sub-file 1 最小化')
-        sub1_off, sub1_len = subs[1]
-        sub1 = arch[sub1_off:sub1_off + sub1_len]
-        sub1_tag = bytes(sub1[0:4])
-        sub1_uncomp = struct.unpack_from('<I', sub1, 8)[0]
-        print(f'      sub-file 1 原: tag={sub1_tag.hex()}, uncomp={sub1_uncomp}, comp={sub1_len}')
-
-        # 生成最小 sub-file 1：保留 tag 和 uncomp_size，body 是 LZSS 压缩的全零
-        sub1_min_body = bytearray(lzss_compress(bytes(sub1_uncomp), 12))
-        sub1_min_body[0:4] = sub1_tag
-        struct.pack_into('<I', sub1_min_body, 4, len(sub1_min_body))
-        struct.pack_into('<I', sub1_min_body, 8, sub1_uncomp)
-        sub1_min = bytes(sub1_min_body)
-        print(f'      sub-file 1 最小化: {sub1_len} → {len(sub1_min)} 字节')
-
-        # 重排 archive: [sub0][padding 到 2KB][sub1_min][padding 到 archive end]
-        # sub-file 0 起始位置不变（0）
-        sub1_new_off = (len(recomp) + 0x7ff) & ~0x7ff   # 下一个 2KB 边界
-        if sub1_new_off + len(sub1_min) > size59:
-            print(f'错误：即使最小化 sub-file 1 也塞不下 (sub1_new_off={sub1_new_off} + min={len(sub1_min)} > {size59})')
-            sys.exit(1)
-
-        arch_patched = bytearray(size59)  # 全零
-        arch_patched[sub0_off:sub0_off + len(recomp)] = recomp
-        arch_patched[sub1_new_off:sub1_new_off + len(sub1_min)] = sub1_min
-        print(f'      新布局: sub0=[0, {len(recomp)}), sub1=[{sub1_new_off}, {sub1_new_off + len(sub1_min)})')
-        print(f'      ⚠️ 测试时验证：游戏所有场景渲染正常，否则 sub-file 1 不能 minimize')
+    if len(recomp) > in_place_available:
+        print(f'错误：sub-file 0 重压缩 ({len(recomp)}) 超过 sub-file 1 偏移 ({in_place_available})')
+        print(f'      检查 ALLOC_TOP（应 ≤2574）和 inject 字数。')
+        sys.exit(1)
+    if len(recomp) >= 45056:
+        print(f'警告：sub-file 0 重压缩 {len(recomp)} 接近 45056 字节阈值，可能触发字体加载 bug')
+    print(f'      sub-file 0 容量 OK ({len(recomp)} ≤ {in_place_available})')
+    arch_patched = bytearray(arch)
+    arch_patched[sub0_off:sub0_off + in_place_available] = bytes(in_place_available)
+    arch_patched[sub0_off:sub0_off + len(recomp)] = recomp
+    assert len(arch_patched) == size59
 
     # 7. 写回 ISO + 更新 codetable + 修 ECC
     print('[7/7] 写回 ISO 并修复 ECC...')
