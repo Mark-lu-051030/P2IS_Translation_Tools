@@ -61,37 +61,41 @@ const arg_ptr    = orig.readUInt32LE(16);
 const diag_ptr   = orig.readUInt32LE(20);
 
 // 扫描所有指令找 diag 偏移
-let instr_ptr = script_ptr;
 // 指令结构: [op:2][imm:2][arg_section_ptr:4]
 // arg_section_ptr 指向参数区，参数区里存 uint32 参数值
 // 对于 op 0x13/0x10f，第一个参数是 dialog 偏移（相对于 diag_ptr）
-const temp_seen = new Map();
-const raw_diag_list = [];
-instr_ptr = script_ptr;
+// 同一个 diag_off 可能被多条指令引用，要全部记下来以便后续重定向
+const off_to_arg_ptrs = new Map();  // diag_off → [arg_section_ptr 列表]
+let instr_ptr = script_ptr;
 while (instr_ptr < arg_ptr) {
   const op = orig.readUInt16LE(instr_ptr);
   if (op === 0x13 || op === 0x10f) {
-    const arg_section_ptr = orig.readUInt32LE(instr_ptr + 4);  // 指向参数区
-    const diag_off = orig.readUInt32LE(arg_section_ptr);        // 读取第一个参数
-    if (!temp_seen.has(diag_off)) {
-      temp_seen.set(diag_off, temp_seen.size);
-      raw_diag_list.push(diag_off);
-    }
+    const arg_section_ptr = orig.readUInt32LE(instr_ptr + 4);
+    const diag_off = orig.readUInt32LE(arg_section_ptr);
+    if (!off_to_arg_ptrs.has(diag_off)) off_to_arg_ptrs.set(diag_off, []);
+    off_to_arg_ptrs.get(diag_off).push(arg_section_ptr);
   }
   instr_ptr += 8;
 }
-raw_diag_list.sort((a, b) => a - b);
+const raw_diag_list = [...off_to_arg_ptrs.keys()].sort((a, b) => a - b);
 const final_offsets = {};
+const diag_to_arg_ptrs = {};  // diagN → 写回新 offset 的所有位置
 raw_diag_list.forEach((off, i) => {
-  final_offsets[`diag${i}`] = diag_ptr + off;
+  const name = `diag${i}`;
+  final_offsets[name] = diag_ptr + off;
+  diag_to_arg_ptrs[name] = off_to_arg_ptrs.get(off);
 });
 
 console.log(`找到 ${raw_diag_list.length} 个对话`);
 
-// 4. 替换对话字节，记录每条 dialog 的结果到 report
+// 4. 替换对话字节
+//    策略：
+//      - new_len ≤ orig_len → 原地写
+//      - new_len > orig_len → 追加到 script 末尾 + 修改 arg 段指针重定向（"relocation"）
 const modified = Buffer.from(orig);
 let changed = 0;
 const report = { file: FILE_ID, sub: SUB_ID, success: [], skipped: [] };
+const to_append = [];  // [{diag, new_items, new_len, orig_len}] - 末尾追加候选
 
 for (const [diag_name, new_items] of Object.entries(new_dialogs)) {
   if (!(diag_name in final_offsets)) {
@@ -104,10 +108,6 @@ for (const [diag_name, new_items] of Object.entries(new_dialogs)) {
   }
   const abs_off = final_offsets[diag_name];
 
-  // 跳过未翻译的（new_items 和原版完全一样的情况——无 zh 翻译）
-  // 这通过看 new_items 的开头是否含 0xd7d7d7 之类的方式判断比较 hacky，
-  // 这里简单的方式：只要 diag 在 new_dialogs 里就走流程；reapply 原数据也无妨。
-
   const orig_diag = parse_dialog(orig.slice(diag_ptr), abs_off - diag_ptr, true);
   if (!orig_diag) {
     const detail = `parse_dialog 返回 falsy（可能 extract 阶段就坏：dialogs[${diag_name}] 不是 list）`;
@@ -119,9 +119,8 @@ for (const [diag_name, new_items] of Object.entries(new_dialogs)) {
   const new_len  = calculate_dialog_length(new_items);
 
   if (new_len > orig_len) {
-    const detail = `译文 ${new_len} bytes > 原文 ${orig_len} bytes`;
-    console.warn(`⚠ ${diag_name}: ${detail}，跳过（无法塞入原槽）`);
-    report.skipped.push({ diag: diag_name, reason: "too_big", detail, new_len, orig_len });
+    // 不在原地写，留到追加阶段处理
+    to_append.push({ diag_name, new_items, new_len, orig_len });
     continue;
   }
 
@@ -135,6 +134,30 @@ for (const [diag_name, new_items] of Object.entries(new_dialogs)) {
   report.success.push({ diag: diag_name, new_len, orig_len });
   changed++;
 }
+
+// 4b. 追加超长对话到 script 末尾，并修改 arg 段指针
+const appended_chunks = [];
+let append_offset = modified.byteLength;  // 起始追加位置（相对 script 头）
+for (const { diag_name, new_items, new_len, orig_len } of to_append) {
+  const buf = Buffer.alloc(new_len);
+  compile_msg(new_items, buf, 0);
+  appended_chunks.push(buf);
+  const new_diag_off = append_offset - diag_ptr;  // 相对 diag_ptr 的新偏移
+  // 更新所有引用该 diag 的 arg 段位置
+  for (const arg_ptr_addr of diag_to_arg_ptrs[diag_name]) {
+    modified.writeUInt32LE(new_diag_off, arg_ptr_addr);
+  }
+  // 清零原位置（让旧字节不会被误读为有效 dialog）
+  const abs_off = final_offsets[diag_name];
+  modified.fill(0, abs_off, abs_off + orig_len);
+  console.log(`↗ ${diag_name}: 追加到末尾 offset=${new_diag_off}, ${new_len}>${orig_len} bytes`);
+  report.success.push({ diag: diag_name, new_len, orig_len, relocated: true, new_offset: new_diag_off });
+  append_offset += new_len;
+  changed++;
+}
+const final_buf = appended_chunks.length > 0
+  ? Buffer.concat([modified, ...appended_chunks])
+  : modified;
 
 // 写 report
 const path_mod = await import("path");
@@ -154,15 +177,54 @@ if (changed === 0) {
 }
 
 // 5. 重压缩
-const recomp = lzss.compress(modified, 0xc, true);
-recomp.writeUInt32LE(sub.readUInt32LE(0), 0);
-recomp.writeUInt32LE(recomp.byteLength, 4);
-recomp.writeUInt32LE(modified.byteLength, 8);
-console.log(`重压缩: ${sub.byteLength} → ${recomp.byteLength} bytes`);
+function compress_with_header(buf) {
+  const r = lzss.compress(buf, 0xc, true);
+  r.writeUInt32LE(sub.readUInt32LE(0), 0);
+  r.writeUInt32LE(r.byteLength, 4);
+  r.writeUInt32LE(buf.byteLength, 8);  // uncomp_size
+  return r;
+}
 
-// 6. 写回主 ISO
-const replacements = { [SUB_ID]: recomp };
-const patched = archive.patch_archive_inplace(arch_buf, replacements);
+let recomp = compress_with_header(final_buf);
+console.log(`重压缩: orig sub-file ${sub.byteLength} → recomp ${recomp.byteLength} bytes (decomp: ${orig.byteLength} → ${final_buf.byteLength})`);
+
+// 真正能不能塞下要看 archive 的 sector padding，由 patch_archive_inplace 内部判断
+// 我们在 step 6 try/catch 整个 patch，如果失败再回退到 in-place only
+
+// 6. 写回主 ISO（含追加 dialog 的版本；如果 archive 装不下就回退到 in-place only）
+let patched;
+try {
+  patched = archive.patch_archive_inplace(arch_buf, { [SUB_ID]: recomp });
+} catch (err) {
+  if (!err.message.includes("exceeds available space") || to_append.length === 0) {
+    throw err;  // 非容量问题或没有追加项就直接抛
+  }
+  console.warn(`⚠ 追加后超 archive 容量，回退为 in-place only：${err.message}`);
+  // 把追加项从 success 移到 skipped
+  for (const t of to_append) {
+    const idx = report.success.findIndex(s => s.diag === t.diag_name && s.relocated);
+    if (idx >= 0) report.success.splice(idx, 1);
+    report.skipped.push({
+      diag: t.diag_name, reason: "too_big",
+      detail: `archive 容量不够（追加超出）`,
+      new_len: t.new_len, orig_len: t.orig_len,
+    });
+    changed--;
+  }
+  // 只做 in-place 重新生成 modified
+  const modified_inplace = Buffer.from(orig);
+  for (const succ of report.success) {
+    const new_items = new_dialogs[succ.diag];
+    const abs_off = final_offsets[succ.diag];
+    compile_msg(new_items, modified_inplace, abs_off);
+    if (succ.new_len < succ.orig_len) {
+      modified_inplace.fill(0, abs_off + succ.new_len, abs_off + succ.orig_len);
+    }
+  }
+  recomp = compress_with_header(modified_inplace);
+  console.log(`回退后重压缩: ${recomp.byteLength} bytes`);
+  patched = archive.patch_archive_inplace(arch_buf, { [SUB_ID]: recomp });
+}
 const cd = await cdimage.init();
 cd.fileposdat = fileposdat;
 await cdimage.write_file(cd, FILE_ID, patched);

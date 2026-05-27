@@ -1,0 +1,1244 @@
+[
+  {
+    "id": "script:90_93:diag1",
+    "meta_jp": "調査報告書",
+    "meta_zh": "调查报告书",
+    "issues": [
+      "page2: zh 缺: {'<SURNAME/>': 1}",
+      "page2: 控制码顺序不同",
+      "page2: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:90_101:diag0",
+    "meta_jp": "立て看板",
+    "meta_zh": "告示牌",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=1",
+      "page1: zh 缺: {'<SURNAME/>': 1}",
+      "page1: 控制码顺序不同",
+      "page1: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:195_8:diag2",
+    "meta_jp": "ギンコ",
+    "meta_zh": "银子",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=2, zh=1"
+    ]
+  },
+  {
+    "id": "script:199_8:diag43",
+    "meta_jp": "栄吉",
+    "meta_zh": "荣吉",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=4, zh=3"
+    ]
+  },
+  {
+    "id": "script:205_8:diag30",
+    "meta_jp": "舞耶",
+    "meta_zh": "麻耶",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=4, zh=3"
+    ]
+  },
+  {
+    "id": "script:238_8:diag0",
+    "meta_jp": "<c13/>",
+    "meta_zh": "<c13/>",
+    "issues": [
+      "page0: 换行: jp=2, zh=0"
+    ]
+  },
+  {
+    "id": "script:279_8:diag11",
+    "meta_jp": "秘密の箱",
+    "meta_zh": "秘密之箱",
+    "issues": [
+      "page0: 换行: jp=2, zh=1"
+    ]
+  },
+  {
+    "id": "script:279_8:diag12",
+    "meta_jp": "秘密の箱",
+    "meta_zh": "秘密之箱",
+    "issues": [
+      "page0: 换行: jp=2, zh=1"
+    ]
+  },
+  {
+    "id": "script:280_8:diag7",
+    "meta_jp": "秘密の箱",
+    "meta_zh": "秘密之箱",
+    "issues": [
+      "page0: 换行: jp=2, zh=1"
+    ]
+  },
+  {
+    "id": "script:280_8:diag8",
+    "meta_jp": "秘密の箱",
+    "meta_zh": "秘密之箱",
+    "issues": [
+      "page0: 换行: jp=2, zh=1"
+    ]
+  },
+  {
+    "id": "script:317_8:diag6",
+    "meta_jp": "淳",
+    "meta_zh": "淳",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:323_8:diag1",
+    "meta_jp": "フィレモン",
+    "meta_zh": "费列蒙",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=4, zh=3"
+    ]
+  },
+  {
+    "id": "script:340_8:diag20",
+    "meta_jp": "レリーフ",
+    "meta_zh": "浮雕",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:340_8:diag21",
+    "meta_jp": "レリーフ",
+    "meta_zh": "浮雕",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:342_8:diag8",
+    "meta_jp": "レリーフ",
+    "meta_zh": "浮雕",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:342_8:diag9",
+    "meta_jp": "レリーフ",
+    "meta_zh": "浮雕",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:344_8:diag0",
+    "meta_jp": "栄吉の声",
+    "meta_zh": "荣吉的声音",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:344_8:diag14",
+    "meta_jp": "シャドウ栄吉",
+    "meta_zh": "影子荣吉",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 3}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:347_8:diag23",
+    "meta_jp": "レリーフ",
+    "meta_zh": "浮雕",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:347_8:diag24",
+    "meta_jp": "レリーフ",
+    "meta_zh": "浮雕",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:358_8:diag1",
+    "meta_jp": "栄吉",
+    "meta_zh": "荣吉",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:358_8:diag4",
+    "meta_jp": "ギンコ",
+    "meta_zh": "银子",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:396_8:diag0",
+    "meta_jp": "リサ",
+    "meta_zh": "莉莎",
+    "issues": [
+      "page1: zh 缺: {'<SURNAME/>': 1}",
+      "page1: 控制码顺序不同",
+      "page1: 换行: jp=4, zh=3"
+    ]
+  },
+  {
+    "id": "script:396_8:diag74",
+    "meta_jp": "栄吉",
+    "meta_zh": "荣吉",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:404_8:diag8",
+    "meta_jp": "舞耶",
+    "meta_zh": "麻耶",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 3}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:455_8:diag38",
+    "meta_jp": "男子生徒",
+    "meta_zh": "男学生",
+    "issues": [
+      "page0: 换行: jp=3, zh=4"
+    ]
+  },
+  {
+    "id": "script:460_8:diag14",
+    "meta_jp": "ギンコ",
+    "meta_zh": "银子",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:462_8:diag5",
+    "meta_jp": "栄吉",
+    "meta_zh": "荣吉",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:462_8:diag17",
+    "meta_jp": "栄吉",
+    "meta_zh": "荣吉",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:462_8:diag124",
+    "meta_jp": "噂屋トクさん",
+    "meta_zh": "传闻屋 阿德",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:462_8:diag140",
+    "meta_jp": "若い女",
+    "meta_zh": "年轻女人",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:462_8:diag238",
+    "meta_jp": "本丸公園",
+    "meta_zh": "本丸公园",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:464_8:diag46",
+    "meta_jp": "リサ",
+    "meta_zh": "莉莎",
+    "issues": [
+      "page1: zh 缺: {'<NAME/>': 2}",
+      "page1: 控制码顺序不同",
+      "page1: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:464_8:diag49",
+    "meta_jp": "リサ",
+    "meta_zh": "莉莎",
+    "issues": [
+      "page1: zh 缺: {'<c13/>': 1}",
+      "page1: zh 多: {'<c13>': 1}",
+      "page1: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:466_8:diag52",
+    "meta_jp": "噂屋トクさん",
+    "meta_zh": "传闻屋 阿德",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:466_8:diag85",
+    "meta_jp": "暇な大学生",
+    "meta_zh": "闲着的大学生",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:466_8:diag115",
+    "meta_jp": "暇な大学生",
+    "meta_zh": "闲着的大学生",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:466_8:diag150",
+    "meta_jp": "本丸公園",
+    "meta_zh": "本丸公园",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:470_8:diag10",
+    "meta_jp": "淳",
+    "meta_zh": "淳",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:471_8:diag24",
+    "meta_jp": "ゆきの",
+    "meta_zh": "雪野",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:476_8:diag30",
+    "meta_jp": "おばちゃん",
+    "meta_zh": "阿姨",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:477_8:diag1",
+    "meta_jp": "栄吉",
+    "meta_zh": "荣吉",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:477_8:diag112",
+    "meta_jp": "イゴール",
+    "meta_zh": "伊格尔",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:492_8:diag29",
+    "meta_jp": "舞耶",
+    "meta_zh": "麻耶",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:492_8:diag31",
+    "meta_jp": "舞耶",
+    "meta_zh": "麻耶",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:493_8:diag0",
+    "meta_jp": "栄吉",
+    "meta_zh": "荣吉",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:498_8:diag82",
+    "meta_jp": "おじいさん",
+    "meta_zh": "老爷爷",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:499_8:diag1",
+    "meta_jp": "ギンコ",
+    "meta_zh": "银子",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:499_8:diag20",
+    "meta_jp": "おじいさん",
+    "meta_zh": "老爷爷",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:500_8:diag72",
+    "meta_jp": "たまきちゃん",
+    "meta_zh": "玉树酱",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:506_8:diag3",
+    "meta_jp": "ギンコ",
+    "meta_zh": "银子",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:506_8:diag5",
+    "meta_jp": "ギンコ",
+    "meta_zh": "银子",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:506_8:diag31",
+    "meta_jp": "噂屋トロ",
+    "meta_zh": "传闻屋 托罗",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:506_8:diag33",
+    "meta_jp": "噂屋トロ",
+    "meta_zh": "传闻屋 托罗",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:513_8:diag70",
+    "meta_jp": "トニー",
+    "meta_zh": "托尼",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:513_8:diag72",
+    "meta_jp": "トニー",
+    "meta_zh": "托尼",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:514_8:diag25",
+    "meta_jp": "トニー",
+    "meta_zh": "托尼",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:515_8:diag14",
+    "meta_jp": "ギンコ",
+    "meta_zh": "银子",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:515_8:diag28",
+    "meta_jp": "舞耶",
+    "meta_zh": "麻耶",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:515_8:diag33",
+    "meta_jp": "舞耶",
+    "meta_zh": "麻耶",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:515_8:diag34",
+    "meta_jp": "舞耶",
+    "meta_zh": "麻耶",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:520_8:diag1",
+    "meta_jp": "栄吉",
+    "meta_zh": "荣吉",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:523_8:diag11",
+    "meta_jp": "ギンコ",
+    "meta_zh": "银子",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:523_8:diag18",
+    "meta_jp": "栄吉",
+    "meta_zh": "荣吉",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=1"
+    ]
+  },
+  {
+    "id": "script:523_8:diag63",
+    "meta_jp": "ゆきの",
+    "meta_zh": "雪野",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:523_8:diag72",
+    "meta_jp": "ゆきの",
+    "meta_zh": "雪野",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:523_8:diag97",
+    "meta_jp": "噂屋チカリン",
+    "meta_zh": "传闻屋 千咔铃",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:523_8:diag130",
+    "meta_jp": "カズヤ",
+    "meta_zh": "和也",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=1"
+    ]
+  },
+  {
+    "id": "script:526_8:diag3",
+    "meta_jp": "舞耶",
+    "meta_zh": "麻耶",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:527_8:diag27",
+    "meta_jp": "ブラウン",
+    "meta_zh": "布朗",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:527_8:diag30",
+    "meta_jp": "ブラウン",
+    "meta_zh": "布朗",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:527_8:diag58",
+    "meta_jp": "黒須<SURNAME/>純子",
+    "meta_zh": "黑须纯子",
+    "issues": [
+      "meta: zh 缺: {'<SURNAME/>': 1}",
+      "meta: 控制码顺序不同",
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:528_8:diag4",
+    "meta_jp": "舞耶",
+    "meta_zh": "麻耶",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=1"
+    ]
+  },
+  {
+    "id": "script:528_8:diag7",
+    "meta_jp": "淳",
+    "meta_zh": "淳",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:529_8:diag4",
+    "meta_jp": "舞耶",
+    "meta_zh": "麻耶",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:530_8:diag16",
+    "meta_jp": "ゆきの",
+    "meta_zh": "雪野",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:531_8:diag0",
+    "meta_jp": "栄吉",
+    "meta_zh": "荣吉",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:532_8:diag16",
+    "meta_jp": "ゆきの",
+    "meta_zh": "雪野",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=1"
+    ]
+  },
+  {
+    "id": "script:532_8:diag31",
+    "meta_jp": "マヌカン",
+    "meta_zh": "模特",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=2, zh=1"
+    ]
+  },
+  {
+    "id": "script:535_8:diag4",
+    "meta_jp": "飄々とした男",
+    "meta_zh": "飘逸的男人",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:540_8:diag11",
+    "meta_jp": "ギンコ",
+    "meta_zh": "银子",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:540_8:diag21",
+    "meta_jp": "舞耶",
+    "meta_zh": "麻耶",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 3}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:540_8:diag32",
+    "meta_jp": "ゆきの",
+    "meta_zh": "雪野",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:540_8:diag48",
+    "meta_jp": "やる気のないボーイ",
+    "meta_zh": "没干劲的男生",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:540_8:diag101",
+    "meta_jp": "太った男",
+    "meta_zh": "胖男人",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:540_8:diag102",
+    "meta_jp": "太った男",
+    "meta_zh": "胖男人",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:540_8:diag104",
+    "meta_jp": "太った男",
+    "meta_zh": "胖男人",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:540_8:diag105",
+    "meta_jp": "太った男",
+    "meta_zh": "胖男人",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:540_8:diag106",
+    "meta_jp": "太った男",
+    "meta_zh": "胖男人",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:540_8:diag131",
+    "meta_jp": "太った男",
+    "meta_zh": "胖男人",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:540_8:diag132",
+    "meta_jp": "太った男",
+    "meta_zh": "胖男人",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:540_8:diag133",
+    "meta_jp": "太った男",
+    "meta_zh": "胖男人",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:540_8:diag134",
+    "meta_jp": "太った男",
+    "meta_zh": "胖男人",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:540_8:diag135",
+    "meta_jp": "太った男",
+    "meta_zh": "胖男人",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:541_8:diag21",
+    "meta_jp": "やる気のないボーイ",
+    "meta_zh": "没干劲的男生",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:541_8:diag27",
+    "meta_jp": "仮面党員",
+    "meta_zh": "假面党员",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:547_8:diag0",
+    "meta_jp": "栄吉",
+    "meta_zh": "荣吉",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:547_8:diag9",
+    "meta_jp": "淳",
+    "meta_zh": "淳",
+    "issues": [
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:549_8:diag6",
+    "meta_jp": "舞耶",
+    "meta_zh": "麻耶",
+    "issues": [
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:549_8:diag9",
+    "meta_jp": "淳",
+    "meta_zh": "淳",
+    "issues": [
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:549_8:diag12",
+    "meta_jp": "初老の画家",
+    "meta_zh": "中年画家",
+    "issues": [
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:549_8:diag15",
+    "meta_jp": "初老の画家",
+    "meta_zh": "中年画家",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:549_8:diag20",
+    "meta_jp": "テイラー",
+    "meta_zh": "泰勒",
+    "issues": [
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:549_8:diag21",
+    "meta_jp": "テイラー",
+    "meta_zh": "泰勒",
+    "issues": [
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:552_8:diag42",
+    "meta_jp": "麻希",
+    "meta_zh": "麻希",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:554_8:diag16",
+    "meta_jp": "栄吉",
+    "meta_zh": "荣吉",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:554_8:diag141",
+    "meta_jp": "寿司公爵",
+    "meta_zh": "寿司公爵",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:554_8:diag142",
+    "meta_jp": "寿司公爵",
+    "meta_zh": "寿司公爵",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:554_8:diag162",
+    "meta_jp": "寿司貴族",
+    "meta_zh": "寿司贵族",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:554_8:diag171",
+    "meta_jp": "寿司貴族",
+    "meta_zh": "寿司贵族",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:556_8:diag29",
+    "meta_jp": "舞耶",
+    "meta_zh": "麻耶",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:556_8:diag151",
+    "meta_jp": "政治家のおじさん",
+    "meta_zh": "政治家大叔",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:556_8:diag167",
+    "meta_jp": "ガラの悪いタクシードライバー",
+    "meta_zh": "粗鲁的出租车司机",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:556_8:diag168",
+    "meta_jp": "ガラの悪いタクシードライバー",
+    "meta_zh": "粗鲁的出租车司机",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:557_8:diag5",
+    "meta_jp": "ギンコ",
+    "meta_zh": "银子",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:557_8:diag39",
+    "meta_jp": "噂屋珠閒瑠ジプシー",
+    "meta_zh": "传闻屋 珠閒瑠吉普赛",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:557_8:diag41",
+    "meta_jp": "噂屋珠閒瑠ジプシー",
+    "meta_zh": "传闻屋 珠閒瑠吉普赛",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 3}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:557_8:diag43",
+    "meta_jp": "噂屋珠閒瑠ジプシー",
+    "meta_zh": "传闻屋 珠閒瑠吉普赛",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:557_8:diag45",
+    "meta_jp": "噂屋珠閒瑠ジプシー",
+    "meta_zh": "传闻屋 珠閒瑠吉普赛",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 2}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:557_8:diag47",
+    "meta_jp": "噂屋珠閒瑠ジプシー",
+    "meta_zh": "传闻屋 珠閒瑠吉普赛",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:557_8:diag59",
+    "meta_jp": "噂屋珠閒瑠ジプシー",
+    "meta_zh": "传闻屋 珠閒瑠吉普赛",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:557_8:diag61",
+    "meta_jp": "噂屋珠閒瑠ジプシー",
+    "meta_zh": "传闻屋 珠閒瑠吉普赛",
+    "issues": [
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:557_8:diag65",
+    "meta_jp": "噂屋珠閒瑠ジプシー",
+    "meta_zh": "传闻屋 珠閒瑠吉普赛",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:557_8:diag68",
+    "meta_jp": "珠閒瑠ジプシー",
+    "meta_zh": "珠閒瑠吉普赛",
+    "issues": [
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:557_8:diag74",
+    "meta_jp": "噂屋珠閒瑠ジプシー",
+    "meta_zh": "传闻屋 珠閒瑠吉普赛",
+    "issues": [
+      "page0: zh 缺: {'<SURNAME/>': 1}",
+      "page0: 控制码顺序不同",
+      "page0: 换行: jp=3, zh=2"
+    ]
+  },
+  {
+    "id": "script:570_8:diag17",
+    "meta_jp": "噂屋珠閒瑠ジプシー",
+    "meta_zh": "传闻屋 珠閒瑠吉普赛",
+    "issues": [
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:570_8:diag19",
+    "meta_jp": "噂屋珠閒瑠ジプシー",
+    "meta_zh": "传闻屋 珠閒瑠吉普赛",
+    "issues": [
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:570_8:diag23",
+    "meta_jp": "噂屋珠閒瑠ジプシー",
+    "meta_zh": "传闻屋 珠閒瑠吉普赛",
+    "issues": [
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:570_8:diag27",
+    "meta_jp": "噂屋珠閒瑠ジプシー",
+    "meta_zh": "传闻屋 珠閒瑠吉普赛",
+    "issues": [
+      "page0: 控制码顺序不同"
+    ]
+  },
+  {
+    "id": "script:570_8:diag31",
+    "meta_jp": "噂屋珠閒瑠ジプシー",
+    "meta_zh": "传闻屋 珠閒瑠吉普赛",
+    "issues": [
+      "page0: 控制码顺序不同"
+    ]
+  }
+]

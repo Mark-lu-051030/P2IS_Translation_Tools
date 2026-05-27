@@ -6,17 +6,18 @@ import json, os
 # 翻译表：id → {zh_pages: [...], meta_zh: '...'}
 # zh_pages 顺序对应原 entry.pages
 T = {
+    # 【测试 RELOCATE】下面 3 条故意加长，触发追加到 script 末尾的路径
     'script:181_8:diag0': {
         'meta_zh': '???',
-        'zh_pages': ['\n<SURNAME/>………？'],
+        'zh_pages': ['\n<SURNAME/>嗯……发生什么了…？'],
     },
     'script:181_8:diag1': {
         'meta_zh': '不良学生',
-        'zh_pages': ['\n<SURNAME/>哟…\n<SURNAME/>这就回家啊？\n'],
+        'zh_pages': ['\n<SURNAME/>哟，你好啊…\n<SURNAME/>这就准备回家了吗？小子？\n'],
     },
     'script:181_8:diag2': {
         'meta_zh': '混混跟班',
-        'zh_pages': ['\n<SURNAME/>嘿嘿～！！\n<SURNAME/>那破车，再也跑不动咯～\n<SURNAME/>因为这家伙没啦～\n'],
+        'zh_pages': ['\n<SURNAME/>嘿嘿嘿嘿嘿嘿嘿嘿嘿嘿嘿～！！哈哈哈哈\n<SURNAME/>那破破破破车，再也跑不动跑不动咯啊～\n<SURNAME/>因为这家伙真的真的没啦哦～哈哈哈哈哈\n'],
     },
     'script:181_8:diag3': {
         'meta_zh': '不良学生',

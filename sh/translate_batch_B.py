@@ -234,7 +234,7 @@ T = {
     # ===== 214_8 =====
     'script:214_8:diag0': {'meta_zh': '银次嗓音的男人', 'zh_pages': ['\n<SURNAME/>呵呵…我可爱的蝴蝶们…<pause:30/>\n<SURNAME/>从你们的梦中生出的能量，\n<SURNAME/>将引导假面党之梦…\n']},
     'script:214_8:diag1': {'meta_zh': '银次嗓音的男人', 'zh_pages': ['\n<SURNAME/>再扇动翅膀。\n<SURNAME/>飞得更高…更远…<pause:30/>\n<SURNAME/>免得梦消散尽…\n']},
-    'script:214_8:diag2': {'meta_zh': '麻美<SURNAME/>未步', 'zh_pages': ['\n<SURNAME/>YairCamen\n']},
+    'script:214_8:diag2': {'meta_zh': '麻美<SURNAME/>未步', 'zh_pages': ['\n<SURNAME/>Yair·Camen…\n']},
     'script:214_8:diag3': {'meta_zh': '托勒斯公子', 'zh_pages': ['\n<SURNAME/>今天就由我佐佐木<SURNAME/>银次…<pause:30/>\n<SURNAME/>不，托勒斯公子来介绍，\n<SURNAME/>由我亲自捧出的新伙伴们。\n']},
     'script:214_8:diag4': {'meta_zh': '托勒斯公子', 'zh_pages': ['\n<SURNAME/>来吧，丽莎君…<pause:30/>\n<SURNAME/>呼唤 Joker 大人吧。\n']},
     'script:214_8:diag5': {'meta_zh': '麻美', 'zh_pages': ['\n<SURNAME/>丽莎…<pause:30/>\n<SURNAME/>一起飞吧?\n']},
