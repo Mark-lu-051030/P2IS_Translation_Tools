@@ -210,44 +210,49 @@ Items 格式：
   每个字形 = 18 字节 = 144 bits（12×12 像素，LSB 优先，行优先）
 ```
 
-字符码 N → 第 N 个字形槽。文件共有 3576 个槽（0–3575）：
-- **槽 0–2575**：原版日文字形（其中 27 个空槽）
-- **槽 2576–2693**：可注入的中文字形位置
-- **槽 2694–3575**：未使用
+字符码 N → 第 N 个字形槽。原版字库共 3576 个槽（0–3575）：
+- **槽 0–99**：ASCII / 标点 / 数字（保护，不能动）
+- **槽 100–2574**：原版日文 kanji（可被覆盖替换成中文）
+- **槽 2575–3575**：原版空槽
 
-**修改流程**（共享助手在 `pylib/p2is.py`）：
+**D1 扩容方案**（2026-05-28 突破）：原版 SLPS 限制 sub-file 0 为 22 sectors（45056 字节 LZSS 数据），写空槽会让 LZSS 重压缩超界 → 黑屏。经过 Ghidra 反汇编追踪发现真正的限制点：
 
-```python
-from pylib.p2is import (read_sectors, write_sectors,
-                       lzss_decompress, lzss_compress,
-                       archive_subfile_offsets, read_filepos, get_file_entry)
-# 1. 读文件 59 archive → archive_subfile_offsets() 找 sub-file 0
-# 2. lzss_decompress → 65520 字节
-# 3. data[0x480 + slot*18 : +18] = new_bitmap
-# 4. lzss_compress（保留原 tag 字节 sub[0:4]！否则游戏崩溃）
-# 5. 写回 archive → write_sectors → fix_ecc.py
+```
+SLPS sub-file 描述符表 @ RAM 0x80010070-0x8001007f (ISO sector 29 offset 0x70):
+  0x80010070: 00 00 00 00 16 00 01 00   ← Desc 1: sub-file 0, size=22 sectors
+  0x80010078: 00 00 16 00 1C 00 01 00   ← Desc 2: sub-file 1, offset=22, size=28 sectors
 ```
 
-参考实现：
-- `inject_chinese_font.py`（主脚本，批量注入所有 zh 字段中的汉字）⭐
-- `tools/inject_grass_into_file59.py`（最小示例：只注入一个 草 字到 slot 16）
+只要 patch 这 16 字节里的两处 `0x16 → 0x1E`（22 → 30 sectors）+ 把 file 59 搬到 ISO 末尾让 sub-file 1 落到 30 sectors offset，就能扩 sub-file 0 容量到 **30 sectors = 61440 字节 LZSS**，覆盖全部 2775 个中文字。详见 `patch_subfile_table.py` + `relocate_file59.py`。
+
+**修改流程**（D1 模式，由 `build.py` 编排）：
+
+```bash
+# 1. patch_subfile_table.py  → SLPS Desc1/Desc2 patch 22→30
+# 2. relocate_file59.py      → file 59 搬 ISO 末尾 + sub-file 1 @ 30 sectors offset
+# 3. inject_chinese_font.py  → 读 working ISO file 59 → 解压 sub-file 0 → 扩到 69KB
+#                             → inject 字到扩展 slot → 重压缩 ≤ 30 sectors → 写回 + fix_ecc
+```
+
+**Slot 分配策略**（关键优化）：
+- **优先填 og kanji slot 100-2574**：替换原日文字符 bitmap，LZSS 重压缩几乎不膨胀
+- **不够再填扩展 slot 2575-3768**：bitmap 替换 0 → 每字膨胀 ~14 字节
+- 实测：1498 个新字 inject 后重压缩 ~47KB（< 30 sectors 限制 61KB）
+
+**容量上限**：
+- decompressed: 65520 → **69000 字节**（RAM 上限：字库基址 0x801CE800 + 69000 < SLPS BSS 区）
+- 重压缩: 45056 → **61440 字节**（SLPS Desc1=30 后 sub-file 0 容量）
+- 可用 slot: 3576 → **3768**（扩展 ~200 个）
 
 **已验证的渲染管道：**
-1. 游戏启动 → 加载文件 59 sub-file 0 → LZSS 解压到 RAM `0x001EF000`
-2. 渲染对话时，从 `0x001EF000 + 0x480 + code*18` 读 18 字节 1bpp bitmap
-3. 转换为 VRAM 纹理（具体 VRAM 位置和转换路径未深究）
-
-**容量策略**（已解决）：
-- 不再往**空槽**（>2575）写——压缩骤增（304 字符会溢出 1898 字节）
-- 改为**替换高位日文 slot 2575↓**——压缩开销几乎为零（304 字符仅 +2 字节）
-- 数据：原 44790 字节，替换 304 汉字后 44796 字节，可用 45056 字节
-- 代价：被覆盖的日文字符在未翻译对话里显示为对应中文（最终目标即全中文，可接受）
+1. SLPS 启动 → FUN_80017a9c 调用字库 loader chain → LZSS 解压到 RAM `0x801CE800`
+2. 渲染对话时，从 `0x801CE800 + 0x480 + code*18` 读 18 字节 1bpp bitmap
+3. 转换为 VRAM 纹理
 
 **LZSS bug 修复**（2026-05-23）：
 - 原 `find_backref` 贪心匹配越过数据末尾，产生越界 backref
 - 游戏的 PS1 解码器宽容（写越界静默忽略）；JS Buffer 也宽容；**Python 严格 → IndexError**
 - 修复：`max_len = min(128, n - iptr)` 不让匹配越界（`pylib/p2is.py` 和 `lib/lzss.mjs` 都改了）
-- 影响：所有自有 round-trip 流程（验证、re-apply）现在严格正确
 
 ---
 
@@ -284,8 +289,10 @@ P2IS_Translation_Tools/
 
 | 文件 | 作用 | 状态 |
 |------|------|------|
-| **`build.py`** | **一键完整管道**：还原 ISO → 注字体 → 编码 zh → 写回 ISO → 修 ECC → 报告 | ⭐ 主入口 |
-| `inject_chinese_font.py` | **批量字体注入**：扫 zh + meta_zh 字段→渲染→写入文件 59 sub-file 0→LZSS 重压缩→修 ECC | ✅ |
+| **`build.py`** | **一键完整管道**：还原 ISO → D1 patch → file 59 搬末尾 → 注字体 → 编码 zh → 写回 ISO → 修 ECC → 报告 | ⭐ 主入口 |
+| `patch_subfile_table.py` | **D1 扩容 Step 1**：patch SLPS sub-file 描述符表（Desc1+Desc2 22→30 sectors） | ✅ |
+| `relocate_file59.py` | **D1 扩容 Step 2**：把 file 59 搬到 ISO 末尾 + sub-file 1 在 30 sectors offset；同时更新 FILEPOS.DAT 和 PVD | ✅ |
+| `inject_chinese_font.py` | **D1 字体注入**：读 working ISO file 59 → 扩 decompressed → inject 中文到 og kanji slot + 扩展 slot → LZSS 重压缩 → 修 ECC | ✅ |
 | `encode_zh.py` | 把翻译文本编码成字符码 items（含 META 段处理），输出到 `out/scripts_zh/` | ✅ |
 | `apply_zh.mjs` | 把编码好的对话用二进制补丁写回 ISO（核心写回工具，自动修 ECC） | ✅ |
 | `fix_ecc.py` | 修复 ISO ECC 校验码（apply_zh.mjs 内部已调用） | ✅ |
@@ -294,7 +301,7 @@ P2IS_Translation_Tools/
 | `p2ep_tool.mjs` | 原 p2ep_tool 入口，调用 `cmd/` 子命令（extract_script 等都走只读 ISO） | ✅ |
 | `codetable.json` | 字符码 → 字符 映射（每次 inject 字体后会更新，含中文覆写） | ✅ |
 | `codetable_og.json` | 原版日文 codetable 基线（用于 JP 渲染、防污染） | ✅ |
-| `all_translatable.json` | 翻译主文件，每条有 id / pages[jp,zh] / meta_jp / meta_zh | 翻译中 |
+| `all_translatable.json` | 翻译主文件，每条有 id / pages[jp,zh] / meta_jp / meta_zh | ✅ 翻译完成 |
 | `conf.json` | 本地配置（**gitignored**）。复制 `conf.json.example` 起步，必须填 `iso` 和 `iso_backup` | 本地配置 |
 | `fusion-pixel-12px.otf` | 像素中文字体（OFL-1.1，[TakWolf/fusion-pixel-font](https://github.com/TakWolf/fusion-pixel-font)），用于渲染 12×12 bitmap | ✅ |
 
@@ -335,6 +342,21 @@ P2IS_Translation_Tools/
 | `test_lowslot.py` | 测试槽号上限的假设（结论：F0086.BIN 根本不被读取） |
 | `test_passthrough.mjs`、`test_export.py` | 早期管道验证 |
 | `codetable_checker.py`、`pending_grid.py`、`missing_stats.py`、`unknown_in_context.py`、`decode.py` | 一次性数据分析脚本 |
+
+### `deprecated_d1_approach/` 字库扩容研究历史
+
+D1 方案最终落地前的探索性脚本（保留为历史参考，不在主管道里）：
+
+| 文件 | 作用 |
+|------|------|
+| `extand_table/extander.py` | 早期只 patch Desc2 的尝试（只改了一半，atlus 后崩） |
+| `expand_file59.py` | 扩 file 59 容量的早期尝试 |
+| `patch_font_base.py` | 误以为字库基址撞堆栈，尝试搬基址（基于 Gemini 误判，已弃） |
+| `ijc.py` | inject_chinese_font.py 的实验性分叉版本 |
+| `test_d1_full.py` | D1 完整测试脚本（参数化 inject 数量/uncomp_size） |
+| `test_expand_subfile0.py` | 测试 sub-file 0 解压上限（找到 ~69KB 临界值） |
+| `test_inject_*.py`、`test_recompress_only.py`、`test_relocate_only.py` | 各种 D1 子方案的隔离测试 |
+| `analyze_lzss*.py`、`analyze_16_vs_17.py` | LZSS 字节流模式分析 |
 
 ---
 
@@ -384,18 +406,23 @@ python3 export_translatable.py
 控制码标签：`<SURNAME/>` `<NAME/>` 等（与日文原文保持一致）。  
 标点 `… ？ ！ ， 。` 等会自动映射到已有字符码。
 
-### 阶段 C：注入字体
+### 阶段 C：D1 扩容 + 注入字体
+
+`build.py` 会自动按顺序跑这三步：
 
 ```bash
-python3 inject_chinese_font.py
+python3 patch_subfile_table.py    # D1 Step 1: SLPS 描述符表 22→30
+python3 relocate_file59.py        # D1 Step 2: file 59 搬末尾 + 30-sector layout
+python3 inject_chinese_font.py    # D1 Step 3: inject 中文到 og kanji + 扩展 slot
 ```
 
-自动完成：扫描 zh 字段中的汉字 → 渲染 12×12 bitmap → LZSS 解压文件 59 sub-file 0 → **替换高位日文 slot**（2575 → 100 往下）→ LZSS 重压缩 → 写回 ISO → 修 ECC → 重建 `codetable.json`。
+**Slot 分配优化**：先填 og 已用 kanji slot（替换 bitmap，LZSS 几乎不膨胀），再填扩展 slot 2575+（每字膨胀 ~14 字节）。这让 1498 个新中文字 inject 后 LZSS 重压缩 ~47KB，稳稳低于 30 sectors 限制（61440 字节）。
 
-**替换策略**（关键发现）：往**空槽**（>2575）写会让 LZSS 失去大段零的 backref，压缩骤增；往**已有日文 slot** 写则压缩开销几乎为零（验证：304 汉字仅 +2 字节）。代价：被覆盖的日文字符在未翻译的对话里会显示成对应中文（属正常 trade-off，最终目标就是全中文）。
+被覆盖的日文 kanji 在未翻译对话里会显示成中文（属正常 trade-off，最终目标就是全中文）。
 
 > ⚠️ 每次新增汉字后都要重新运行，保证字形和编码表同步。  
 > ⚠️ codetable.json 会被重建，跑前会自动从 codetable_og.json 作基线。
+> ⚠️ codetable.json 不复用上次 inject 的 mapping（避免污染传染），所以每次 slot 编号会变。
 
 ### 阶段 D：编码对话
 
@@ -435,6 +462,8 @@ node apply_zh.mjs 3 6      # file 3, sub-file 6
 
 > ⚠️ **必须从标题画面开始新游戏**，不能加载存档（save state）。PS1 存档会把已解压的场景数据保存在 RAM 里，加载存档后游戏不会重新从 ISO 读取对话，修改不会生效。
 
+> ⚠️ **DuckStation 必须开 tab 加速**。PSX LZSS decode 慢 + cdrom 流式加载耗时。Game 启动期间常常看起来"黑屏"几秒到几十秒，实际在等 CD/decoder。**没加速 == 等不够 == 误以为崩溃**。这是排查 D1 路上几次最大误判的根因。
+
 ```bash
 # 可选：验证数据是否正确写入
 node verify_full.mjs
@@ -455,6 +484,11 @@ node verify_full.mjs
 | **修改字体后游戏渲染不变** | **以为 F0086.BIN 是字体源，实际游戏完全不读取它！真正的字体在文件 59 sub-file 0（LZSS 压缩）** | 改写所有字体注入工具到文件 59；F0086.BIN 是无用的"参考副本" |
 | 改 file 181 sub-file 8 后游戏黑屏崩溃 | `patch_dialog_181.mjs` 重压缩时用 `Buffer.allocUnsafe` 留下未初始化字节，把 sub-file tag 字节 2（sub-file 序号 0x08）变成 0x00，游戏无法识别 sub-file 8 | 显式保留原 tag：`recomp[0:4] = sub.readUInt32LE(0)`，并在 Python 中直接覆盖 `recomp[0:4] = tag_bytes` |
 | `patch_dialog_181.mjs` 把所有字符码改成 16 导致脚本损坏 | `diag.map(item => typeof item === "number" ? 16 : item)` 把控制码参数（独立 number）和真字符码混淆了 | 只改特定位置的字符码，控制码参数（虽是 number）必须保持原值 |
+| **写空 slot 区（>2574）触发 45056 字节边界 bug** | SLPS 内部限制 sub-file 0 读 22 sectors = 45056 字节。空 slot 区原本压缩成大段零 backref，inject 中文 bitmap 破坏这个压缩 → 重压缩字节流膨胀 → 超 22 sectors → 数据被截断 → 字库错乱 → 黑屏 | D1 方案：patch SLPS Desc1/Desc2 让它读 30 sectors |
+| **以为字库基址撞堆栈（Gemini 误判）** | Gemini 看 FUN_80026c50 反编译猜字库在 0x801F0000 撞堆栈。实际字库基址是 0x801CE800（FUN_80024e78 内 lui+ori 加载），离堆栈 ~134KB 远 | 自己用 Ghidra 追代码，不信表面诊断 |
+| **以为 atlus 前总是崩** | 所有"atlus 前黑屏"测试都没等够时间！PSX LZSS decode 很慢 + cdrom 流式加载，game 在 loading 状态 | DuckStation 按 tab 加速验证 ROM hack 必备 |
+| **D1 patch Desc1+Desc2 atlus 前崩** | 实际并没崩——只是 LZSS decode + cdrom 加载慢，没等够时间误以为黑屏 | 同上：DuckStation tab 加速 |
+| **MIPS unaligned access 在 Ghidra Decompile 里很乱** | `lwl/lwr` 配对在反编译里看着像奇怪的 bit-shift 写操作 | 切到 Listing 视图看实际指令；References 标记的 R/W 是可信的 |
 
 ---
 
@@ -464,16 +498,62 @@ node verify_full.mjs
 - ✅ 完整二进制补丁管道（已在游戏内验证）
 - ✅ **字体源定位**：确认对话字体在**文件 59 sub-file 0**（不是 F0086.BIN！）
 - ✅ **字体注入**：`inject_chinese_font.py` 批量注入（扫 zh + meta_zh，含 LZSS 重压缩+保留 tag）
-- ✅ **一键管道**：`build.py` 整合还原/字体/编码/apply/ECC，~2-30s 完成
+- ✅ **一键管道**：`build.py` 整合还原/D1/字体/编码/apply/ECC
 - ✅ **META 段处理**：encode_zh.py 正确处理纯 META diag（角色介绍）保留 CMD_WAIT
-- ✅ **容量策略**：替换高位日文 slot 2575↓ 而不是写空槽，304 汉字仅 +2 字节压缩开销
+- ✅ **D1 字库扩容**（2026-05-28）：突破 SLPS 22 sectors 限制扩到 30 sectors。Patch SLPS 描述符表 + file 59 搬末尾 + sub-file 1 在 30 sectors offset。可装全部 2775 中文字
+- ✅ **DeepSeek-R1 批量翻译**：11243 页 script 翻译完成（11h / ~CA$15）
 - ✅ **污染防御**（2026-05-24）：所有 extract 走 `init_readonly` 只读 iso_backup；export 用 codetable_og 渲染 JP；build.py 启动 sanity check
+- ✅ **end-to-end 验证**：游戏从启动到主菜单到剧情对话全程跑通中文渲染（DuckStation tab 加速）
 
 **待解决：**
-- ⚠️ 大量翻译工作（26000+ 条目，目前 zh 全空）
-- ⚠️ `apply_zh.mjs` 目前只支持**长度不变**的替换（中文字数 > 原槽时跳过，写入 build_report）
+- ⚠️ `apply_zh.mjs` 目前只支持**长度不变**的替换（中文字数 > 原槽时 too_big 重定位，写入 build_report）
 - ⚠️ 部分 diag 在 extract 阶段就被 parse 成 `false`（详见 build_report 的 not_array 跳过列表）
 - ⚠️ 文件 59 sub-file 1（备用 65520 字节，用途待确认）暂未使用
+- ⚠️ 对话框右下角小图标（继续指示器）颜色异常 — cosmetic，可能 sub-file 1 数据相关
+- ⚠️ Battle string / strtbl 翻译 pipeline 还没做
+- ⚠️ 部分主角对话（如 file 182 diag6）渲染时被跳过（待调查）
+
+### D1 字库扩容方案（2026-05-28 突破）
+
+**问题**：原版字库 2575 个 slot，1277 个中日共用字可复用，剩余 1298 个可覆盖 og 日文 kanji slot。需要 inject 1498 个新中文字，**差 200 个字**。试图写 og 空 slot（>2574）时，LZSS 重压缩字节数膨胀超过 22 sectors（45056 字节）→ 字库 LZSS 数据被 SLPS 读取截断 → 黑屏。
+
+**Ghidra 反汇编关键发现**：
+
+1. **字库基址 0x801CE800**（在 FUN_80024e78 函数内 lui $a2, 0x801C + ori $a2, $a2, 0xe800 加载，位于 ISO sector 70 offset 0x68c）
+2. **字库加载链**：
+   ```
+   FUN_8002166c (启动 init)
+   └─ FUN_80017a9c(0)          ← 加载 sub-file 0
+       └─ FUN_80024f00          ← dispatch wrapper
+           └─ FUN_80024e78      ← LZSS state setup
+               └─ FUN_80026a10   ← state machine init
+               └─ FUN_80024c78   ← CD-ROM DMA 注册 (DsPacket callback)
+   ```
+3. **Sub-file 描述符表** @ RAM 0x80010070-0x8001007f（ISO sector 29 offset 0x70）：
+   ```
+   0x80010070: 00 00 00 00 16 00 01 00   ← Desc 1: sub-file 0 size=22 sectors
+   0x80010078: 00 00 16 00 1C 00 01 00   ← Desc 2: sub-file 1 offset=22, size=28
+   ```
+4. **7-slot CD ring buffer** @ 0x801CB000-0x801CE800（紧贴字库基址，环形索引）
+
+**D1 修改方案**：
+
+| Step | 修改 | 作用 |
+|------|------|------|
+| 1 | ISO sector 29 offset 0x74-0x77: `16 00 01 00 → 1e 00 01 00` | Desc 1 short[2]: sub-file 0 size 22 → 30 sectors |
+| 2 | ISO sector 29 offset 0x78-0x7b: `00 00 16 00 → 00 00 1e 00` | Desc 2 short[1]: sub-file 1 offset 22 → 30 sectors |
+| 3 | 把 file 59 搬到 ISO 末尾（sector 294186），更新 FILEPOS.DAT[59] 和 PVD volume_space_size | 给 sub-file 0 留 30 sectors（61440 字节）空间 |
+| 4 | inject 中文 bitmap：先填 og kanji slot（不膨胀），再填扩展 slot 2575-3768（每字 ~14 字节膨胀） | 用 1298 + 200 = 1498 个 slot 装下所有新中文字 |
+
+**容量数据**：
+- LZSS 重压缩字节数：44782 → 47590（< 30 sectors = 61440 ✓）
+- decompressed 字节数：65520 → 69000（RAM 0x801CE800+69000 < BSS 区起点）
+- 可用 slot 数：3576 → 3768（扩展 192 个新 slot）
+- 实际 inject 1498 个新中文字 = needed_new 全部覆盖
+
+**实现**：`patch_subfile_table.py` + `relocate_file59.py` + `inject_chinese_font.py`（三步由 `build.py` 编排）
+
+---
 
 ### 字体定位事件回顾（2026-05-23）
 
