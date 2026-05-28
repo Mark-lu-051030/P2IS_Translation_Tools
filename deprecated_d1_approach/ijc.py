@@ -1,0 +1,301 @@
+"""
+扫描 all_translatable.json 中所有 zh 字段的汉字，渲染 12×12 bitmap，
+注入到游戏对话字体（文件 59 sub-file 0，LZSS 压缩）。
+
+⚠️ 关键：游戏的对话字体在文件 59 sub-file 0，不是 F0086.BIN。
+F0086.BIN 是格式相同的"参考副本"，游戏运行时不读它。
+
+流程：
+  1. 收集 zh 字段中所有汉字
+  2. 分配槽位（codetable 里有的复用，没有的从 FIRST_SLOT 开始分配）
+  3. 用 PIL 渲染每个字 → 12×12 1bpp bitmap → 18 字节
+  4. 读取文件 59 → 提取 sub-file 0 → LZSS 解压（→ 65520 字节）
+  5. 在每个分配的槽位写入 bitmap（offset = 0x480 + slot * 18）
+  6. LZSS 重压缩（保留原始 tag 字节）
+  7. patch_archive_inplace 替换 sub-file 0
+  8. 写回 ISO，修复 ECC
+  9. 更新 codetable.json
+
+用法: python3 inject_chinese_font.py
+"""
+import json, shutil, re, struct, subprocess, sys, os
+from PIL import Image, ImageDraw, ImageFont
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, ROOT)
+from pylib.p2is import (
+    read_sectors, write_sectors,
+    lzss_decompress, lzss_compress,
+    archive_subfile_offsets,
+    read_filepos, get_file_entry,
+)
+
+# ── 路径配置 ────────────────────────────────────────────────────────────────
+ISO_PATH   = '/home/mark/Code/RomHacking/Game/P2IS_PSX/ogd/Persona 2 - Tsumi - Innocent Sin (Japan).bin'
+BACKUP_ISO = '/home/mark/Code/RomHacking/Game/P2IS_PSX/ogd/Persona 2 - Tsumi - Innocent Sin (Japan) - 副本.bin'
+TTF_PATH   = os.path.join(ROOT, 'fusion-pixel-12px.otf')  # OFL-1.1, 专为像素显示设计
+CODETABLE     = os.path.join(ROOT, 'codetable.json')      # 输出（被本脚本重建）
+CODETABLE_OG  = os.path.join(ROOT, 'codetable_og.json')   # 输入：原始日文 codetable（基线）
+TRANS_JSON    = os.path.join(ROOT, 'all_translatable.json')
+FIX_ECC    = os.path.join(ROOT, 'fix_ecc.py')
+FONT_FILE  = 59         # 文件 59 = 对话字体 archive
+FONT_SUB   = 0          # sub-file 0 = LZSS 压缩的字形数据
+# 槽位分配策略：从 ALLOC_TOP 往下替换已有日文槽位（避免压缩膨胀）
+# 替换现有 bitmap 几乎不增加压缩大小；写入空槽（>2575）会使 LZSS 失去大段零的 backref
+# 副作用：被覆盖的日文字符在未翻译的对话里会显示成对应中文（属正常 trade-off）
+ALLOC_TOP    = 3575     # 字库共有 0-3575 槽，2694-3575 是空槽（写它会让 LZSS 压缩膨胀但能扩容量）
+ALLOC_BOTTOM = 100      # 不低于这里（保护常用标点和 UI 字符）
+
+# SECTOR/BLOCK 常量、扇区 IO、LZSS、archive 解析 都从 pylib.p2is 引入
+from pylib.p2is import SECTOR, BLOCK_OFF, BLOCK_SIZE
+
+# ── 字形渲染 ────────────────────────────────────────────────────────────────
+
+try:
+    TTF = ImageFont.truetype(TTF_PATH, 12)  # fusion-pixel 是 12px，不像 Noto 要缩到 11
+except Exception as e:
+    print(f'警告: 加载 {TTF_PATH} 失败 ({e})，使用默认字体')
+    TTF = ImageFont.load_default()
+
+def render_char(ch):
+    """渲染汉字为 12×11 1bpp bitmap → 18 字节（LSB 优先，行优先）。
+
+    ⚠ 关键：游戏字体里每个字符 18 字节 = 12x12 packed (144 bits)，但 row 11 (最后一行) 几乎
+    所有 og 字符都是 0（统计 3000 个 og 字符里 row 11 真正有像素的只有 2 个）。byte 17 几乎
+    可能是 metadata（字符宽度/控制 flag），写非零值会让游戏字体引擎按错误参数渲染 → 崩溃。
+
+    所以我们只用 12x11 = 132 像素的画布，row 11 强制保持为 0（不写 byte 16 高 4 bits / byte 17）。
+    """
+    img = Image.new('L', (12, 11), 0)   # 高度 11 而非 12
+    draw = ImageDraw.Draw(img)
+    bbox = draw.textbbox((0, 0), ch, font=TTF)
+    w = bbox[2] - bbox[0]; h = bbox[3] - bbox[1]
+    x = (12 - w) // 2 - bbox[0]
+    y = (11 - h) // 2 - bbox[1]
+    draw.text((x, y), ch, fill=255, font=TTF)
+    bits = [1 if p > 64 else 0 for p in img.getdata()]   # 12 * 11 = 132 bits
+    result = bytearray(18)
+    for i, b in enumerate(bits):
+        if b: result[i // 8] |= (1 << (i % 8))
+    return bytes(result)
+
+# ── 主流程 ──────────────────────────────────────────────────────────────────
+
+def main():
+    # 1. 收集需要注入的汉字
+    print('[1/7] 扫描 all_translatable.json 中的汉字...')
+    data = json.load(open(TRANS_JSON, encoding='utf-8'))
+    needed = set()
+    def collect_chars(text):
+        clean = re.sub(r'<[^>]+/?>', '', text)
+        for c in clean:
+            if '一' <= c <= '鿿' or '㐀' <= c <= '䶿':
+                needed.add(c)
+    for entry in data:
+        for page in entry.get('pages', []):
+            collect_chars(page.get('zh', '') or '')
+        collect_chars(entry.get('meta_zh', '') or '')
+    needed = sorted(needed)
+    print(f'      需要 {len(needed)} 个汉字')
+
+    if not needed:
+        print('没有汉字需要注入，退出。')
+        return
+
+    # 2. 分配槽位（3 层优先级，省 slot）：
+    #   优先级 1: 复用 codetable_og 里已有的同字符（CJK 共用字，~1277 字可省）
+    #   优先级 2: 复用上次 inject 的 CN 分配（避免槽号每次重排）
+    #   优先级 3: 新分配（从 ALLOC_TOP 往下）
+    print('[2/7] 分配槽位（替换高位日文 kanji）...')
+    ct_og = json.load(open(CODETABLE_OG, encoding='utf-8'))
+    needed_set = set(needed)
+
+    # 优先级 1: og 里同字复用（不渲染，不写 bitmap，只是更新 codetable mapping）
+    og_reused = {}
+    for k, v in ct_og.items():
+        if isinstance(v, str) and len(v) == 1 and v in needed_set:
+            og_reused[v] = int(k)
+    print(f'      og 共用字复用: {len(og_reused)} 字（不需要 inject bitmap）')
+
+    # 优先级 2: 复用上次 CN inject
+    # 关键过滤：slot 不能与 og_reused 冲突（否则上次污染的 codetable.json 会传染过来）
+    og_reused_slots = set(og_reused.values())
+    ct_existing = {}
+    try:
+        ct_cur = json.load(open(CODETABLE, encoding='utf-8'))
+        ct_existing = {v: int(k) for k, v in ct_cur.items()
+                       if isinstance(v, str) and len(v) == 1
+                       and v in needed_set and int(k) <= ALLOC_TOP
+                       and v not in og_reused
+                       and int(k) not in og_reused_slots  # ← 防止 og 槽被覆盖
+                       and (k not in ct_og or ct_og[k] != v)}
+    except Exception:
+        pass
+
+    assignments = {}   # char → slot
+    used_slots = set(og_reused.values()) | set(ct_existing.values())
+    for ch, slot in og_reused.items():
+        assignments[ch] = slot
+    for ch, slot in ct_existing.items():
+        assignments[ch] = slot
+
+    # 优先级 3: 新分配
+    slot = ALLOC_TOP
+    new_alloc_count = 0
+    for ch in needed:
+        if ch in assignments:
+            continue
+        while slot in used_slots:
+            slot -= 1
+        if slot < ALLOC_BOTTOM:
+            print(f'错误：槽位用到 {ALLOC_BOTTOM} 以下了（已分配 {len(assignments)} 字），')
+            print(f'      调整 ALLOC_BOTTOM 或减少汉字数量。')
+            sys.exit(1)
+        assignments[ch] = slot
+        used_slots.add(slot)
+        new_alloc_count += 1
+        slot -= 1
+
+    # 只对【真正需要写 bitmap 的字】生成渲染列表 = og 没有的
+    inject_chars = {ch: slot for ch, slot in assignments.items() if ch not in og_reused}
+    used_in_run = set(assignments.values())
+    print(f'      槽位范围: {min(used_in_run)} ~ {max(used_in_run)}（{len(used_in_run)} 个 mapping）')
+    print(f'      og 复用 {len(og_reused)} + 旧 CN 复用 {len(ct_existing)} + 新分配 {new_alloc_count}')
+    print(f'      实际需要 inject bitmap 的字: {len(inject_chars)}')
+
+    # 3. 读取文件 59 archive
+    print('[3/7] 读取文件 59 archive...')
+    filepos = read_sectors(BACKUP_ISO, 0x17, 0x1b88)
+    block59 = struct.unpack_from('<I', filepos, FONT_FILE * 8)[0]
+    size59  = struct.unpack_from('<I', filepos, FONT_FILE * 8 + 4)[0]
+    arch = read_sectors(BACKUP_ISO, block59, size59)
+    subs = archive_subfile_offsets(arch)
+    print(f'      文件 59: block={block59}, size={size59}, sub-files={len(subs)}')
+
+    # 4. 提取并解压 sub-file 0
+    print('[4/7] 解压 sub-file 0...')
+    sub0_off, sub0_len = subs[FONT_SUB]
+    sub0 = arch[sub0_off:sub0_off + sub0_len]
+    tag_bytes = bytes(sub0[0:4])
+    total_comp  = struct.unpack_from('<I', sub0, 4)[0]
+    uncomp_size = struct.unpack_from('<I', sub0, 8)[0]
+    decompressed = bytearray(lzss_decompress(sub0, 12, total_comp - 12, uncomp_size))
+    print(f'      tag={tag_bytes.hex()}, {sub0_len} → {len(decompressed)} 字节')
+    assert len(decompressed) == 65520, f'解压大小异常: {len(decompressed)}'
+
+    # 5. 渲染并写入需要注入的字（og 共用字不动）
+    print(f'[5/7] 渲染并注入 {len(inject_chars)} 个汉字 bitmap...')
+    for ch, idx in inject_chars.items():
+        bmp = render_char(ch)
+        off = 0x480 + idx * 18
+        decompressed[off:off + 18] = bmp
+
+    # 6. 重压缩 sub-file 0
+    print('[6/7] LZSS 重压缩...')
+    recomp = bytearray(lzss_compress(bytes(decompressed), 12))
+    recomp[0:4] = tag_bytes  # 保留原始 tag（关键！否则游戏崩溃）
+    struct.pack_into('<I', recomp, 4, len(recomp))
+    struct.pack_into('<I', recomp, 8, len(decompressed))
+    print(f'      重压缩 sub-file 0: {len(recomp)} 字节 (原 {sub0_len})')
+
+    # === 容量策略 ===
+    TARGET_OFFSET = 61440  # 30 个扇区，我们刚刚在底层硬编码中指定的新坐标！
+
+    if len(recomp) > TARGET_OFFSET:
+        print(f'错误：重压缩后 sub-file 0 {len(recomp)} 字节 > 扩容后的可用空间 {TARGET_OFFSET} 字节')
+        sys.exit(1)
+    print(f'      字体占位: {len(recomp)} 字节（剩余 {TARGET_OFFSET - len(recomp)} 字节空白安全区）')
+
+    # 提取原版 Sub-file 1 (完整保留，不再需要移位或最小化)
+    sub1_off, sub1_len = subs[1]
+    sub1_original = bytes(arch[sub1_off:sub1_off + sub1_len])
+
+    # 暴力组装扩容版 File 59 (新大小 = 61440 + sub1 的大小)
+    new_file59_size = TARGET_OFFSET + len(sub1_original)
+    arch_patched = bytearray(new_file59_size)
+    arch_patched[0:len(recomp)] = recomp
+    arch_patched[TARGET_OFFSET : TARGET_OFFSET + len(sub1_original)] = sub1_original
+
+    # 7. 追加到 ISO 尾部并更新 FILEPOS.DAT
+    print('[7/7] 尾部追加新 File 59 并更新总目录 (FILEPOS.DAT)...')
+    
+    # 👑 【核心修复】标准 PS1 Mode 2 Form 1 扇区头生成函数 
+    def create_valid_ps1_sector(lba):
+        # 换算 LBA 到 MSF (Minute, Second, Frame)
+        abs_sect = lba + 150
+        m = abs_sect // 4500
+        s = (abs_sect % 4500) // 75
+        f = abs_sect % 75
+        
+        # 转换为 BCD (Binary-Coded Decimal) 格式
+        to_bcd = lambda val: (val // 10) * 16 + (val % 10)
+        
+        sector = bytearray(2352)
+        # 1. Sync Header (12 bytes)
+        sector[0:12] = b'\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00'
+        # 2. MSF 时间戳 (3 bytes)
+        sector[12:15] = bytes([to_bcd(m), to_bcd(s), to_bcd(f)])
+        # 3. 模式 (Mode 2)
+        sector[15] = 0x02
+        # 4. 子头 (Subheader, 2 份备份，表示这是数据扇区)
+        sector[16:24] = b'\x00\x00\x08\x00\x00\x00\x08\x00'
+        
+        return sector
+
+    with open(ISO_PATH, 'r+b') as f:
+        f.seek(0, 2)  # 移动到 ISO 文件末尾
+        iso_size = f.tell()
+        new_lba = iso_size // 2352
+        
+        new_sector_count = (new_file59_size + 2047) // 2048 
+        # 写入带有合法 MSF 身份证的新扇区！
+        for i in range(new_sector_count):
+            f.write(create_valid_ps1_sector(new_lba + i))
+            
+    print(f'      已在光盘尾部 LBA {new_lba} 开辟 {new_sector_count} 个合法新扇区')
+
+    # 将拼装好的新 File 59 写入新开辟的 LBA 区域
+    write_sectors(ISO_PATH, new_lba, bytes(arch_patched))
+
+    # 更新 FILEPOS.DAT (它的固定位置在光盘 LBA 0x17 即 23 扇区)
+    # ⚠ 关键：FILEPOS.DAT 名义 size 是 0x1b88=7048 字节，但 sector 23-26 这 4 个扇区里 0x1b88 之后还有 game 用的数据
+    # 必须读写整 4 个 sector，否则 write_sectors 会把尾部 padding 清零，抹掉那些数据 → 游戏黑屏
+    FILEPOS_TOTAL = 4 * 2048  # 8192，跨 sector 23-26
+    filepos_data = bytearray(read_sectors(ISO_PATH, 0x17, FILEPOS_TOTAL))
+    struct.pack_into('<I', filepos_data, FONT_FILE * 8, new_lba)             # 覆盖旧指针，写入新的 LBA
+    struct.pack_into('<I', filepos_data, FONT_FILE * 8 + 4, new_file59_size) # 写入新文件的总大小
+    write_sectors(ISO_PATH, 0x17, bytes(filepos_data))
+
+    # 更新 ISO 9660 PVD 的 volume_space_size（sector 16）
+    # ⚠ 关键：PVD 声明的卷大小限制了 PSX cdrom 驱动可读 sector 范围。
+    # 不更新 → file 59 在 PVD 边界之外 → 读 sector 失败 → 游戏黑屏（卡在 FMV 之前）
+    new_total_sectors = new_lba + new_sector_count
+    pvd = bytearray(read_sectors(ISO_PATH, 16, 2048))
+    old_vol_le = struct.unpack_from('<I', pvd, 80)[0]
+    struct.pack_into('<I', pvd, 80, new_total_sectors)   # LE
+    struct.pack_into('>I', pvd, 84, new_total_sectors)   # BE
+    write_sectors(ISO_PATH, 16, bytes(pvd))
+    print(f'      PVD volume_space_size: {old_vol_le} → {new_total_sectors}')
+
+    # 修复相关的所有 ECC 校验码
+    print('      正在修复追加扇区、FILEPOS.DAT、PVD 的 ECC...')
+    subprocess.run(['python3', FIX_ECC, str(new_lba), str(new_lba + new_sector_count - 1)], check=True)
+    subprocess.run(['python3', FIX_ECC, '23', '26'], check=True)
+    subprocess.run(['python3', FIX_ECC, '16', '16'], check=True)
+
+    # 更新 codetable.json
+    # 从 og 复制做底，然后写入所有 assignments（包括覆盖 og 非 needed 字的 slot）
+    # 注意：og_reused 的字 char→slot 已经在 og 里了（slot 没变），重新写一次也无害
+    # 新分配可能命中 og 里的非 needed 字 slot（如 og[1700]=某日文 kanji），这是想要的覆盖
+    new_ct = dict(ct_og)
+    for ch, idx in assignments.items():
+        new_ct[str(idx)] = ch
+    with open(CODETABLE, 'w', encoding='utf-8') as f:
+        json.dump(new_ct, f, ensure_ascii=False, separators=(',', ':'))
+    print(f'      codetable.json 已更新（包含 {len(new_ct)} 条字库映射，含覆盖 og 非 needed 字的 slot）')
+
+    print(f'\n✅ 完成。{len(assignments)} 个汉字已成功注入光盘尾部的扩容版 File 59！')
+    print('下一步：python3 encode_zh.py → node apply_zh.mjs <file> <sub>')
+
+if __name__ == '__main__':
+    main()

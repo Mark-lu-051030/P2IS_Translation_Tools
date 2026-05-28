@@ -40,14 +40,15 @@ TRANS_JSON    = os.path.join(ROOT, 'all_translatable.json')
 FIX_ECC    = os.path.join(ROOT, 'fix_ecc.py')
 FONT_FILE  = 59         # 文件 59 = 对话字体 archive
 FONT_SUB   = 0          # sub-file 0 = LZSS 压缩的字形数据
-# 槽位分配策略：从 ALLOC_TOP 往下替换 og 已有日文槽位（避免压缩膨胀）
-# ⚠ 关键：写入 og 没用过的空槽（slot 2575+）会让 sub-file 0 LZSS 重压缩字节数膨胀，
-#         一旦超过 45056 字节（22 sectors）触发 PSX 端字体加载 bug，游戏黑屏卡在 atlus 后。
-#         SLPS 内部有未找到的硬编码假设 sub-file 0 ≤ 22 sectors，1E patch 没改到它。
-#         所以 ALLOC_TOP 必须 ≤ 2574，只覆盖 og 已用 kanji。
-# 副作用：被覆盖的日文字符在未翻译的对话里会显示成对应中文（属正常 trade-off）
-ALLOC_TOP    = 2574     # og 最高 slot（不写 2575+ 空槽，避免触发 45056 字节边界 bug）
+# 槽位分配策略：D1 扩容方案
+# build.py 流程先跑 patch_subfile_table.py (Desc1+Desc2 = 30 sectors) + relocate_file59.py
+# 这把 SLPS 期待的 sub-file 0 容量从 22 sectors 扩到 30 sectors (45056 → 61440 字节)
+# 同时把 file 59 搬到 ISO 末尾让 sub-file 1 在 30 sectors offset
+# 这里 inject 时可以用扩展 slot 3576+（原来空区）
+ALLOC_TOP    = 3800     # D1 扩容后可达 (sub-file 0 解压上限 ~69000, (69000-0x480)/18=3825)
 ALLOC_BOTTOM = 100      # 不低于这里（保护常用标点和 UI 字符）
+EXPANDED_DECOMP_SIZE = 69000   # D1 字库 RAM 区上限（实测临界值）
+SUBFILE_1_OFFSET = 30 * 2048    # D1 layout: sub-file 1 在 30 sectors offset
 
 # SECTOR/BLOCK 常量、扇区 IO、LZSS、archive 解析 都从 pylib.p2is 引入
 from pylib.p2is import SECTOR, BLOCK_OFF, BLOCK_SIZE
@@ -100,11 +101,12 @@ def main():
         print('没有汉字需要注入，退出。')
         return
 
-    # 2. 分配槽位（3 层优先级，省 slot）：
+    # 2. 分配槽位（2 层优先级）：
     #   优先级 1: 复用 codetable_og 里已有的同字符（CJK 共用字，~1277 字可省）
-    #   优先级 2: 复用上次 inject 的 CN 分配（避免槽号每次重排）
-    #   优先级 3: 新分配（从 ALLOC_TOP 往下）
-    print('[2/7] 分配槽位（替换高位日文 kanji）...')
+    #   优先级 2: 新分配（从 ALLOC_TOP 往下，跳过 og 非 kanji slot）
+    # ⚠ 不再复用上次 inject 的 codetable.json — 那会让上次的污染（覆盖 ASCII 等）传染到本次。
+    #   每次重新分配 slot 号变但 build 流程会重跑 encode+apply 所以无碍。
+    print('[2/7] 分配槽位（替换 og 日文 kanji slot）...')
     ct_og = json.load(open(CODETABLE_OG, encoding='utf-8'))
     needed_set = set(needed)
 
@@ -115,60 +117,78 @@ def main():
             og_reused[v] = int(k)
     print(f'      og 共用字复用: {len(og_reused)} 字（不需要 inject bitmap）')
 
-    # 优先级 2: 复用上次 CN inject
-    # 关键过滤：slot 不能与 og_reused 冲突（否则上次污染的 codetable.json 会传染过来）
-    og_reused_slots = set(og_reused.values())
-    ct_existing = {}
-    try:
-        ct_cur = json.load(open(CODETABLE, encoding='utf-8'))
-        ct_existing = {v: int(k) for k, v in ct_cur.items()
-                       if isinstance(v, str) and len(v) == 1
-                       and v in needed_set and int(k) <= ALLOC_TOP
-                       and v not in og_reused
-                       and int(k) not in og_reused_slots  # ← 防止 og 槽被覆盖
-                       and (k not in ct_og or ct_og[k] != v)}
-    except Exception:
-        pass
-
     assignments = {}   # char → slot
-    used_slots = set(og_reused.values()) | set(ct_existing.values())
+    used_slots = set(og_reused.values())
+    og_reused_slots = set(og_reused.values())
     for ch, slot in og_reused.items():
         assignments[ch] = slot
-    for ch, slot in ct_existing.items():
-        assignments[ch] = slot
+    ct_existing = {}  # 留个空对象给后面的打印用
 
     # 优先级 3: 新分配（按频率从高到低 — needed 已排好序）
-    # ⚠ 关键：只覆盖 og 里是 kanji 的 slot，保护所有 ASCII/数字/标点（如 '~' slot 126、'。'、',' 等）
-    #         否则 encode_zh.py 会找不到这些字符。
-    # 容量不够时跳过低频字符（记录到 skipped_chars）
+    # D1 扩容后规则：
+    #   - og 里是 kanji 的 slot (100-2574): 可覆盖（中文替换日文 kanji）
+    #   - og 里是 ASCII/标点的 slot: 保护（如 '~' slot 126）
+    #   - og 没有的 slot (2575+, 扩展区): 可写（D1 扩容空间）
     def is_kanji_slot(slot):
         og_ch = ct_og.get(str(slot))
-        if not og_ch or len(og_ch) != 1:
-            return False
+        if og_ch is None:
+            return True    # D1 扩展区 slot (og 没有) — 可写
+        if len(og_ch) != 1:
+            return False   # 特殊条目（多字符 / 控制码）保护
+        # og 里是单字符：只有 kanji 可覆盖
         return '一' <= og_ch <= '鿿' or '㐀' <= og_ch <= '䶿'
 
-    slot = ALLOC_TOP
+    # D1 优化分配顺序：
+    #   - 先填 og 非 needed kanji slot (slot 100-2574 中非 og_reused 的 kanji)：
+    #     替换 bitmap，LZSS 重压缩几乎不膨胀
+    #   - 不够再填扩展区 slot (>2574)：
+    #     bitmap 替换零，每字膨胀 ~14 字节
+    OG_MAX = 2574
+
+    # 收集 og kanji slot (可覆盖，按 slot 从高到低)
+    og_kanji_slots = sorted(
+        [int(k) for k, v in ct_og.items()
+         if int(k) > ALLOC_BOTTOM and int(k) <= OG_MAX
+         and isinstance(v, str) and len(v) == 1
+         and ('一' <= v <= '鿿' or '㐀' <= v <= '䶿')
+         and int(k) not in og_reused_slots],
+        reverse=True
+    )
+    # 扩展区 slot (从高到低)
+    ext_slots = list(range(min(ALLOC_TOP, OG_MAX + (EXPANDED_DECOMP_SIZE - 0x480) // 18 - 1 - OG_MAX), OG_MAX, -1))
+
+    # 合并：先 og kanji（无膨胀），再扩展区（有膨胀）
+    free_slots = og_kanji_slots + ext_slots
+
     new_alloc_count = 0
+    new_og_count = 0
+    new_ext_count = 0
     skipped_chars = []
+    slot_iter = iter(free_slots)
     for ch in needed:
         if ch in assignments:
             continue
-        # 找下一个可用 slot：未用过 + og 里是 kanji
-        while slot >= ALLOC_BOTTOM and (slot in used_slots or not is_kanji_slot(slot)):
-            slot -= 1
-        if slot < ALLOC_BOTTOM:
+        slot = None
+        for s in slot_iter:
+            if s not in used_slots:
+                slot = s
+                break
+        if slot is None:
             skipped_chars.append(ch)
             continue
         assignments[ch] = slot
         used_slots.add(slot)
         new_alloc_count += 1
-        slot -= 1
+        if slot <= OG_MAX:
+            new_og_count += 1
+        else:
+            new_ext_count += 1
 
     # 只对【真正需要写 bitmap 的字】生成渲染列表 = og 没有的
     inject_chars = {ch: slot for ch, slot in assignments.items() if ch not in og_reused}
     used_in_run = set(assignments.values())
     print(f'      槽位范围: {min(used_in_run)} ~ {max(used_in_run)}（{len(used_in_run)} 个 mapping）')
-    print(f'      og 复用 {len(og_reused)} + 旧 CN 复用 {len(ct_existing)} + 新分配 {new_alloc_count}')
+    print(f'      og 复用 {len(og_reused)} + 旧 CN 复用 {len(ct_existing)} + 新分配 {new_alloc_count} (og kanji 替换 {new_og_count} + 扩展区 {new_ext_count})')
     print(f'      实际需要 inject bitmap 的字: {len(inject_chars)}')
     if skipped_chars:
         # 把 skipped 字符写到文件供 encode_zh.py 检查
@@ -182,31 +202,38 @@ def main():
         print(f'        最低频 30 字: {sample}')
         print(f'        完整列表已写: out/skipped_chars.txt')
 
-    # 3. 读取文件 59 archive
-    print('[3/7] 读取文件 59 archive...')
-    filepos = read_sectors(BACKUP_ISO, 0x17, 0x1b88)
+    # 3. 读取文件 59 archive — D1 模式从 working ISO 读（已经 layout 转换过）
+    print('[3/7] 读取文件 59 archive (D1 layout)...')
+    filepos = read_sectors(ISO_PATH, 0x17, 4 * 2048)
     block59 = struct.unpack_from('<I', filepos, FONT_FILE * 8)[0]
     size59  = struct.unpack_from('<I', filepos, FONT_FILE * 8 + 4)[0]
-    arch = read_sectors(BACKUP_ISO, block59, size59)
-    subs = archive_subfile_offsets(arch)
-    print(f'      文件 59: block={block59}, size={size59}, sub-files={len(subs)}')
+    arch = read_sectors(ISO_PATH, block59, size59)
+    print(f'      文件 59: block={block59}, size={size59} (应在 ISO 末尾)')
+    # D1 layout: sub-file 0 在 [0, ~22 sectors), padding 到 30 sectors, sub-file 1 在 30 sectors offset
+    sub0_len_max = SUBFILE_1_OFFSET  # 30 sectors = 61440 字节 (D1 扩容上限)
 
     # 4. 提取并解压 sub-file 0
     print('[4/7] 解压 sub-file 0...')
-    sub0_off, sub0_len = subs[FONT_SUB]
-    sub0 = arch[sub0_off:sub0_off + sub0_len]
+    sub0 = arch[:sub0_len_max]
     tag_bytes = bytes(sub0[0:4])
     total_comp  = struct.unpack_from('<I', sub0, 4)[0]
     uncomp_size = struct.unpack_from('<I', sub0, 8)[0]
     decompressed = bytearray(lzss_decompress(sub0, 12, total_comp - 12, uncomp_size))
-    print(f'      tag={tag_bytes.hex()}, {sub0_len} → {len(decompressed)} 字节')
-    assert len(decompressed) == 65520, f'解压大小异常: {len(decompressed)}'
+    print(f'      tag={tag_bytes.hex()}, total_comp={total_comp} → {len(decompressed)} 字节')
+
+    # D1: 扩 decompressed 到 EXPANDED_DECOMP_SIZE 字节（多出区域写新 slot bitmap）
+    if len(decompressed) < EXPANDED_DECOMP_SIZE:
+        decompressed.extend(bytearray(EXPANDED_DECOMP_SIZE - len(decompressed)))
+        print(f'      D1 扩展 decompressed: {len(decompressed)} 字节')
 
     # 5. 渲染并写入需要注入的字（og 共用字不动）
     print(f'[5/7] 渲染并注入 {len(inject_chars)} 个汉字 bitmap...')
     for ch, idx in inject_chars.items():
         bmp = render_char(ch)
         off = 0x480 + idx * 18
+        if off + 18 > len(decompressed):
+            print(f'      ⚠ slot {idx} bitmap 超出 decompressed 范围，跳过')
+            continue
         decompressed[off:off + 18] = bmp
 
     # 6. 重压缩 sub-file 0
@@ -215,23 +242,22 @@ def main():
     recomp[0:4] = tag_bytes  # 保留原始 tag（关键！否则游戏崩溃）
     struct.pack_into('<I', recomp, 4, len(recomp))
     struct.pack_into('<I', recomp, 8, len(decompressed))
-    print(f'      重压缩 sub-file 0: {len(recomp)} 字节 (原 {sub0_len})')
+    print(f'      重压缩 sub-file 0: {len(recomp)} 字节 (uncomp_size header = {len(decompressed)})')
 
-    # === 容量策略 ===
-    # 必须原位写入 — sub-file 1 在 22 sectors 偏移处是 SLPS 硬编码假设，不能移动。
-    # 如果重压缩后 sub-file 0 超过这个容量，说明 ALLOC_TOP 设错了（应 ≤2574 不写空槽）。
-    in_place_available = subs[1][0] - sub0_off if len(subs) > 1 else size59 - sub0_off
-    if len(recomp) > in_place_available:
-        print(f'错误：sub-file 0 重压缩 ({len(recomp)}) 超过 sub-file 1 偏移 ({in_place_available})')
-        print(f'      检查 ALLOC_TOP（应 ≤2574）和 inject 字数。')
+    # === D1 容量策略 ===
+    # D1 layout: sub-file 0 占 [0, 30 sectors), sub-file 1 在 30 sectors offset
+    # SLPS 已 patch 读 30 sectors of sub-file 0
+    if len(recomp) > SUBFILE_1_OFFSET:
+        print(f'错误：sub-file 0 重压缩 ({len(recomp)}) 超过 30 sectors ({SUBFILE_1_OFFSET})')
+        print(f'      减少 inject 字数 或 调低 EXPANDED_DECOMP_SIZE')
         sys.exit(1)
-    if len(recomp) >= 45056:
-        print(f'警告：sub-file 0 重压缩 {len(recomp)} 接近 45056 字节阈值，可能触发字体加载 bug')
-    print(f'      sub-file 0 容量 OK ({len(recomp)} ≤ {in_place_available})')
-    arch_patched = bytearray(arch)
-    arch_patched[sub0_off:sub0_off + in_place_available] = bytes(in_place_available)
-    arch_patched[sub0_off:sub0_off + len(recomp)] = recomp
-    assert len(arch_patched) == size59
+    print(f'      D1 容量 OK ({len(recomp)} ≤ {SUBFILE_1_OFFSET} = 30 sectors)')
+
+    # 拼新 archive：sub-file 0 重压缩 + 零 padding + sub-file 1 原内容
+    sub1_orig = bytes(arch[SUBFILE_1_OFFSET:])
+    arch_patched = bytearray(size59)
+    arch_patched[:len(recomp)] = recomp
+    arch_patched[SUBFILE_1_OFFSET:SUBFILE_1_OFFSET + len(sub1_orig)] = sub1_orig
 
     # 7. 写回 ISO + 更新 codetable + 修 ECC
     print('[7/7] 写回 ISO 并修复 ECC...')

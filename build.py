@@ -88,8 +88,16 @@ def step_restore():
     shutil.copy(BACKUP, ISO)
     print(f'  ✓ 已还原 ({time.time()-t0:.1f}s, {os.path.getsize(ISO)//1024//1024} MB)')
 
+def step_d1_subfile_patch():
+    step('2a. D1: Patch SLPS sub-file 描述符表 (22→30 sectors)')
+    run(['python3', 'patch_subfile_table.py'])
+
+def step_d1_layout():
+    step('2b. D1: file 59 搬末尾 + 30-sector layout')
+    run(['python3', 'relocate_file59.py'])
+
 def step_inject_font():
-    step('2. 注入中文字体 → 文件 59 sub-file 0')
+    step('2c. 注入中文字体 → 文件 59 sub-file 0 (含 D1 扩容 inject)')
     run(['python3', 'inject_chinese_font.py'])
 
 def step_encode_zh():
@@ -212,7 +220,10 @@ def main():
         sanity_check_no_pollution()
         if not args.no_restore: step_restore()
         else:                   print('\n[跳过] ISO 还原')
-        if not args.no_font:    step_inject_font()
+        if not args.no_font:
+            step_d1_subfile_patch()    # D1: patch SLPS 描述符表
+            step_d1_layout()           # D1: file 59 搬末尾 + 30-sector layout
+            step_inject_font()         # 注入中文（含扩展 slot）
         else:                   print('\n[跳过] 字体注入')
         if not args.no_encode:  step_encode_zh()
         else:                   print('\n[跳过] 编码')

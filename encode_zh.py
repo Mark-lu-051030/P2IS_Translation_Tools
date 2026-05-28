@@ -14,13 +14,17 @@ for k, v in raw_ct.items():
     if len(v) == 1 and not v.startswith('['):
         rev[v] = int(k)
 
-# 全角标点 → 复用已有半角/日文槽位
+# 全角标点 / 缺字 → 复用已有半角/日文槽位
 FULLWIDTH_ALIASES = {
     '！': '!', '？': '?', '…': '.',
     '，': '、', '。': '。',
     '：': ':', '；': ';',
     '（': '(', '）': ')',
     '　': ' ',   # 全角空格
+    '~': '〜',   # 半角波浪 → 全角波浪 (og slot 136)
+    '—': '-',    # em dash → 半角 minus (og slot 45)
+    '–': '-',    # en dash → minus
+    '―': '-',    # horizontal bar → minus
 }
 for fw, hw in FULLWIDTH_ALIASES.items():
     if hw in rev and fw not in rev:
