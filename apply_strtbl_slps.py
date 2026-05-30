@@ -78,17 +78,22 @@ def apply_one(fname):
     total = str_ptr
     print(f'  {N} strings → 索引表+数据 {total} 字节 (max {max_len}, 余 {max_len-total})')
 
+    # ⚠ 只覆写重建表的实际长度 total，不碰 total~max_len 之间的原字节！
+    # extract 给的 max_len 可能偏大（覆盖到下一个未识别的 string table，如战斗菜单「コマンドを」）。
+    # 全清零会破坏紧邻的数据。只写 total 字节，保留后面原样。
+    new_table = new_table[:total]
+
     # 算 ISO 上的绝对位置
     abs_byte_offset = SLPS_BLOCK * 2048 + offset_in_file
     start_sector = abs_byte_offset // 2048
     in_sector_off = abs_byte_offset % 2048
-    end_byte = abs_byte_offset + max_len
+    end_byte = abs_byte_offset + total
     end_sector = (end_byte + 2047) // 2048
     sector_count = end_sector - start_sector
 
-    # 读相关 sectors 的 user data，覆写 max_len 字节，写回
+    # 读相关 sectors 的 user data，只覆写 total 字节，写回
     user_data = bytearray(read_sectors(ISO, start_sector, sector_count * 2048))
-    user_data[in_sector_off:in_sector_off + max_len] = bytes(new_table)
+    user_data[in_sector_off:in_sector_off + total] = bytes(new_table)
     write_sectors(ISO, start_sector, bytes(user_data))
 
     # 修 ECC

@@ -96,17 +96,21 @@ async function apply_one(zh_data) {
     const arch_buf = await cdimage.read_file(cd, FILE_ID);
     const sub_files = archive.extract_files(arch_buf);
 
+    // ⚠ 只覆写重建表的实际长度 total_bytes，不碰 total~max_len 之间的原字节！
+    // extract 的 max_len 可能偏大（覆盖到下一个未识别的 table），全清零会破坏紧邻数据。
+    const new_table_trimmed = new_table.subarray(0, total_bytes);
+
     let patched;
     if (sub_files.length === 1 && sub_files[0] === arch_buf) {
         // single file（archive.mjs 'Assuming single file'）：直接在 file 内 offset 覆写
         patched = Buffer.from(arch_buf);
-        console.log(`  single file, length ${patched.byteLength}, write at offset ${offset}`);
-        new_table.copy(patched, offset);
+        console.log(`  single file, length ${patched.byteLength}, write at offset ${offset} (${total_bytes}B)`);
+        new_table_trimmed.copy(patched, offset);
     } else {
         // 真 archive：找 SUB_ID sub-file, 在 offset 覆写, 用 patch_archive_inplace 替换
         const sub_data = Buffer.from(sub_files[SUB_ID]);
-        console.log(`  sub-file ${SUB_ID}: length ${sub_data.byteLength}`);
-        new_table.copy(sub_data, offset);
+        console.log(`  sub-file ${SUB_ID}: length ${sub_data.byteLength}, write ${total_bytes}B at offset ${offset}`);
+        new_table_trimmed.copy(sub_data, offset);
         patched = archive.patch_archive_inplace(arch_buf, { [SUB_ID]: sub_data });
     }
 
