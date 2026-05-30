@@ -22,9 +22,15 @@ FULLWIDTH_ALIASES = {
     '（': '(', '）': ')',
     '　': ' ',   # 全角空格
     '~': '〜',   # 半角波浪 → 全角波浪 (og slot 136)
+    '～': '〜',   # 全角波浪(U+FF5E) → og 的波浪(U+301C)
     '—': '-',    # em dash → 半角 minus (og slot 45)
     '–': '-',    # en dash → minus
     '―': '-',    # horizontal bar → minus
+    '《': '「', '》': '」',   # 书名号 → 引号
+    '‘': "'", '’': "'",      # 中文单引号 → 半角
+    '“': '"', '”': '"',      # 中文双引号 → 半角
+    '·': '・',                # 间隔号 → 中点
+    'ó': 'o',                # 西文重音 → o
 }
 for fw, hw in FULLWIDTH_ALIASES.items():
     if hw in rev and fw not in rev:
@@ -202,11 +208,16 @@ for fname in sorted(os.listdir(src_dir)):
 
         new_items = []
         if open_ctrl is not None:
+            # 角色介绍类 meta（以 [29, X] 开头）：保留 portrait/box-type 控制码
             new_items.append(open_ctrl)
             # META body：有 meta_zh 就用译文，没有就保留原日文 chars
             new_items += encode_meta(meta_zh) if meta_zh else orig_meta_body
             if close_ctrl is not None:
                 new_items.append(close_ctrl)
+        elif meta_zh and not zh_pages:
+            # 普通 dialog（option dialog 等，以 [32]/[34]/普通字符开头）
+            # meta_zh 包含完整 dialog 文本（含所有控制符），直接 encode
+            new_items += encode_meta(meta_zh)
 
         # 对话本体
         if zh_pages:

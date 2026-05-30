@@ -47,7 +47,7 @@ FONT_SUB   = 0          # sub-file 0 = LZSS 压缩的字形数据
 # 这里 inject 时可以用扩展 slot 3576+（原来空区）
 ALLOC_TOP    = 3800     # D1 扩容后可达 (sub-file 0 解压上限 ~69000, (69000-0x480)/18=3825)
 ALLOC_BOTTOM = 100      # 不低于这里（保护常用标点和 UI 字符）
-EXPANDED_DECOMP_SIZE = 69000   # D1 字库 RAM 区上限（实测临界值）
+EXPANDED_DECOMP_SIZE = 65520   # D1 字库 RAM 区上限（实测临界值）
 SUBFILE_1_OFFSET = 30 * 2048    # D1 layout: sub-file 1 在 30 sectors offset
 
 # SECTOR/BLOCK 常量、扇区 IO、LZSS、archive 解析 都从 pylib.p2is 引入
@@ -84,10 +84,16 @@ def main():
     data = json.load(open(TRANS_JSON, encoding='utf-8'))
     from collections import Counter
     freq = Counter()
+    # og 已有的字符集合（用于判断假名是否需要 inject）
+    _ct_og_early = json.load(open(CODETABLE_OG, encoding='utf-8'))
+    _og_chars = set(v for v in _ct_og_early.values() if isinstance(v, str) and len(v) == 1)
     def collect_chars(text):
         clean = re.sub(r'<[^>]+/?>', '', text)
         for c in clean:
             if '一' <= c <= '鿿' or '㐀' <= c <= '䶿':
+                freq[c] += 1
+            # 假名/特殊字符：只在 og 字库没有时才 inject（如 が ヘ ホ ョ 这类 og 缺的）
+            elif ('぀' <= c <= 'ヿ') and c not in _og_chars:
                 freq[c] += 1
     for entry in data:
         for page in entry.get('pages', []):
@@ -154,10 +160,15 @@ def main():
          and int(k) not in og_reused_slots],
         reverse=True
     )
-    # 扩展区 slot (从高到低)
-    ext_slots = list(range(min(ALLOC_TOP, OG_MAX + (EXPANDED_DECOMP_SIZE - 0x480) // 18 - 1 - OG_MAX), OG_MAX, -1))
+    # 扩展区 slot：⚠ 必须从低位 2575 往上紧凑分配！
+    # decompressed 大小 = 0x480 + (最高slot+1)*18。原版字库 buffer 65520 字节对应最高 slot
+    # = (65520-0x480)//18 = 3575。超过 slot 3575 会让 decompressed > 65520，覆盖字库后面
+    # RAM 0x801DE7F0+ 的 UI 数据 → HP/¥/菜单标题颜色乱、选项框空、战斗 invalid read。
+    # 所以从 2575 往上用最小 slot 号，让 decompressed 尽量小（611 字只到 slot ~3185 = 58500 字节）。
+    MAX_SAFE_SLOT = (65520 - 0x480) // 18   # = 3575
+    ext_slots = list(range(OG_MAX + 1, MAX_SAFE_SLOT + 1))   # 2575,2576,...,3575 低到高
 
-    # 合并：先 og kanji（无膨胀），再扩展区（有膨胀）
+    # 合并：先 og kanji（替换日文，不增 decompressed），再扩展区（从低位填，最小化 decompressed）
     free_slots = og_kanji_slots + ext_slots
 
     new_alloc_count = 0

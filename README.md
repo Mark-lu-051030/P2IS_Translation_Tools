@@ -292,10 +292,15 @@ P2IS_Translation_Tools/
 | **`build.py`** | **一键完整管道**：还原 ISO → D1 patch → file 59 搬末尾 → 注字体 → 编码 zh → 写回 ISO → 修 ECC → 报告 | ⭐ 主入口 |
 | `patch_subfile_table.py` | **D1 扩容 Step 1**：patch SLPS sub-file 描述符表（Desc1+Desc2 22→30 sectors） | ✅ |
 | `relocate_file59.py` | **D1 扩容 Step 2**：把 file 59 搬到 ISO 末尾 + sub-file 1 在 30 sectors offset；同时更新 FILEPOS.DAT 和 PVD | ✅ |
-| `inject_chinese_font.py` | **D1 字体注入**：读 working ISO file 59 → 扩 decompressed → inject 中文到 og kanji slot + 扩展 slot → LZSS 重压缩 → 修 ECC | ✅ |
-| `encode_zh.py` | 把翻译文本编码成字符码 items（含 META 段处理），输出到 `out/scripts_zh/` | ✅ |
-| `apply_zh.mjs` | 把编码好的对话用二进制补丁写回 ISO（核心写回工具，自动修 ECC） | ✅ |
-| `fix_ecc.py` | 修复 ISO ECC 校验码（apply_zh.mjs 内部已调用） | ✅ |
+| `inject_chinese_font.py` | **D1 字体注入**：读 working ISO file 59 → 扩 decompressed → inject 中文到 og kanji slot + 扩展 slot（从低位2575↑紧凑分配，避免覆盖 UI 数据）+ og 缺的假名 → LZSS 重压缩 → 修 ECC | ✅ |
+| `encode_zh.py` | 把 script 翻译编码成字符码 items（含 META 段处理 + 全角标点 alias），输出 `out/scripts_zh/` | ✅ |
+| `encode_strtbl.py` | 把 strtbl 翻译编码成 items，输出 `out/strtbl_zh/`（文件名 regex 支持 SLUS 前缀=file 0） | ✅ |
+| `apply_zh.mjs` | 把编码好的对话二进制补丁写回 ISO（含 too_big 重定位 + 自动 ECC） | ✅ |
+| `apply_strtbl.mjs` | strtbl 写回 archive 文件（**重建 count+索引表**，跳过 SLUS） | ✅ |
+| `apply_strtbl_slps.py` | SLPS file 0 内 strtbl 写回（raw-sector，重建索引表） | ✅ |
+| `savemenu_strtbl.py` | 存档/记忆卡菜单 extract+apply（ISO 游离区 sector 273695，保留前缀/控制码） | ✅ |
+| `check_translation.py` | 校验翻译：进度 + hard 控制码守恒（SURNAME 软码豁免）+ codetable 缺字 | ✅ |
+| `fix_ecc.py` | 修复 ISO ECC 校验码（各 apply 内部已调用） | ✅ |
 | `export_translatable.py` | 生成 `all_translatable.json`（含 jp / zh / meta_jp / meta_zh 字段）。**用 codetable_og.json 渲染 JP** 防止被字体注入后的中文 slot 污染 | ✅ |
 | `export_all_dialog.py` | （历史）纯文本对话提取；已不在主管道里 | 备用 |
 | `p2ep_tool.mjs` | 原 p2ep_tool 入口，调用 `cmd/` 子命令（extract_script 等都走只读 ISO） | ✅ |
@@ -497,21 +502,23 @@ node verify_full.mjs
 **已完成：**
 - ✅ 完整二进制补丁管道（已在游戏内验证）
 - ✅ **字体源定位**：确认对话字体在**文件 59 sub-file 0**（不是 F0086.BIN！）
-- ✅ **字体注入**：`inject_chinese_font.py` 批量注入（扫 zh + meta_zh，含 LZSS 重压缩+保留 tag）
-- ✅ **一键管道**：`build.py` 整合还原/D1/字体/编码/apply/ECC
-- ✅ **META 段处理**：encode_zh.py 正确处理纯 META diag（角色介绍）保留 CMD_WAIT
-- ✅ **D1 字库扩容**（2026-05-28）：突破 SLPS 22 sectors 限制扩到 30 sectors。Patch SLPS 描述符表 + file 59 搬末尾 + sub-file 1 在 30 sectors offset。可装全部 2775 中文字
-- ✅ **DeepSeek-R1 批量翻译**：11243 页 script 翻译完成（11h / ~CA$15）
-- ✅ **污染防御**（2026-05-24）：所有 extract 走 `init_readonly` 只读 iso_backup；export 用 codetable_og 渲染 JP；build.py 启动 sanity check
-- ✅ **end-to-end 验证**：游戏从启动到主菜单到剧情对话全程跑通中文渲染（DuckStation tab 加速）
+- ✅ **字体注入**：`inject_chinese_font.py` 批量注入（扫 zh + meta_zh + 假名缺字，含 LZSS 重压缩+保留 tag）
+- ✅ **D1 字库扩容**（2026-05-28）：突破 SLPS 22 sectors 限制扩到 30 sectors。可装全部中文字（含 strtbl 用字共 ~2900 unique）
+- ✅ **script 剧情对话 100%**（11445/11445 页）：DeepSeek-R1 批量翻译（11h/~CA$15）+ 手工补 199 条控制码密集对话
+- ✅ **strtbl UI/菜单 100%**（2939 条）：菜单/系统提示/技能说明/地点名/角色名。`encode_strtbl.py` + `apply_strtbl.mjs`(archive) + `apply_strtbl_slps.py`(SLPS file 0)，含索引表重建
+- ✅ **存档/记忆卡菜单**：`savemenu_strtbl.py` 处理 ISO 游离区 sector 273695（30 条系统消息）
+- ✅ **控制码守恒校验**：`check_translation.py`（SURNAME 软码可增减，其他 hard 码强制守恒）
+- ✅ **一键管道**：`build.py` 整合 还原→D1→字体→encode(script+strtbl)→apply(script+strtbl+SLPS+savemenu)→ECC
+- ✅ **污染防御**（2026-05-24）：extract 只读 iso_backup；export 用 codetable_og 渲染 JP；build sanity check
+- ✅ **end-to-end 验证**：游戏从启动到主菜单到剧情/战斗全程中文（DuckStation tab 加速）
 
 **待解决：**
-- ⚠️ `apply_zh.mjs` 目前只支持**长度不变**的替换（中文字数 > 原槽时 too_big 重定位，写入 build_report）
-- ⚠️ 部分 diag 在 extract 阶段就被 parse 成 `false`（详见 build_report 的 not_array 跳过列表）
-- ⚠️ 文件 59 sub-file 1（备用 65520 字节，用途待确认）暂未使用
-- ⚠️ 对话框右下角小图标（继续指示器）颜色异常 — cosmetic，可能 sub-file 1 数据相关
-- ⚠️ Battle string / strtbl 翻译 pipeline 还没做
-- ⚠️ 部分主角对话（如 file 182 diag6）渲染时被跳过（待调查）
+- ⚠️ **Battle string**（26978 条/174 文件）：上游 extract_battle_strings 是半成品，解析全 false/垃圾，需重新逆向格式
+- ⚠️ **战斗菜单界面**（コマンドを選択して下さい / 魔法 / アイテム / ロード / セーブ 等）仍是日文 —— 文字来源未定位（不在已翻的 strtbl 0_0_0），疑似在 battle 相关表或别的未提取处
+- ⚠️ 对话框继续指示器三角 + L1/L2 按键图标 + HP/¥/TIME 标签颜色 — 非文字 UI 元素渲染问题（cosmetic）
+- ⚠️ 存档菜单「差込口X」插槽标签仍日文（SLPS 动态拼接，「込」缺字显示乱码，极小瑕疵）
+- ⚠️ 人名一致性校对（可选润色）
+- ⚠️ 部分 diag 在 extract 阶段 parse 成 false（脚本死数据，游戏不显示，无影响）
 
 ### D1 字库扩容方案（2026-05-28 突破）
 

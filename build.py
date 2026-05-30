@@ -104,6 +104,22 @@ def step_encode_zh():
     step('3. 编码 zh 翻译 → out/scripts_zh/')
     run(['python3', 'encode_zh.py'])
 
+def step_encode_strtbl():
+    step('3b. 编码 strtbl 翻译 → out/strtbl_zh/')
+    run(['python3', 'encode_strtbl.py'])
+
+def step_apply_strtbl():
+    step('4b. 把 strtbl 翻译应用到 ISO（archive 文件）')
+    run(['node', 'apply_strtbl.mjs', 'all'])
+
+def step_apply_strtbl_slps():
+    step('4c. 把 SLPS executable 内的 strtbl 写回 ISO (file 0)')
+    run(['python3', 'apply_strtbl_slps.py'])
+
+def step_apply_savemenu():
+    step('4d. 把存档/记忆卡菜单写回 ISO (游离区 sector 273695)')
+    run(['python3', 'savemenu_strtbl.py', 'apply'])
+
 def step_apply(only=None):
     """对 out/scripts_zh/ 里每个文件跑 apply_zh.mjs。
     only: set of file_id ints to filter, or None for all."""
@@ -145,9 +161,13 @@ def aggregate_reports():
         return None
     total_success = 0
     skipped = []
+    # 只聚合 script 的 per-file 报告（{file}_{sub}.json）；
+    # 排除汇总文件和 strtbl 报告（格式不同，success 是 int 不是 list）
+    SKIP_NAMES = {'summary.json', 'strtbl_summary.json', 'strtbl_slps_summary.json'}
     for fname in sorted(os.listdir(REPORT_DIR)):
-        if not fname.endswith('.json') or fname == 'summary.json': continue
+        if not fname.endswith('.json') or fname in SKIP_NAMES: continue
         r = json.load(open(os.path.join(REPORT_DIR, fname), encoding='utf-8'))
+        if not isinstance(r.get('success'), list): continue  # 跳过非 script 格式
         total_success += len(r.get('success', []))
         for s in r.get('skipped', []):
             skipped.append({**s, 'file': r['file'], 'sub': r['sub']})
@@ -165,8 +185,8 @@ def step_summary():
     total = sum(c.values())
     print(f'  翻译统计（all_translatable.json 里 zh 非空）:')
     print(f'    script: {c["script"]}')
-    print(f'    strtbl: {c["strtbl"]} (当前不会被 apply，pipeline 仅处理 script)')
-    print(f'    battle: {c["battle"]} (当前不会被 apply)')
+    print(f'    strtbl: {c["strtbl"]}')
+    print(f'    battle: {c["battle"]} (battle pipeline 待做)')
     print(f'    other:  {c["other"]}')
     print(f'  总计: {total} pages 已翻译')
 
@@ -195,8 +215,8 @@ def step_summary():
             json.dump(rep, f, ensure_ascii=False, indent=2)
         print(f'\n  📄 详细报告: out/build_report/summary.json')
 
-    if c['strtbl'] or c['battle']:
-        print(f'\n  ⚠ strtbl/battle 翻译未应用（encode_zh.py 仅处理 script）')
+    if c['battle']:
+        print(f'\n  ⚠ battle 翻译未应用（battle pipeline 待做）')
     print(f'\n  ✅ ISO 已就绪: {ISO}')
     print(f'     冷启动 DuckStation → 加载 ISO → 从标题画面开新游戏')
 
@@ -208,6 +228,7 @@ def main():
     ap.add_argument('--no-font',    action='store_true', help='跳过字体注入（仅 zh 文本变化时）')
     ap.add_argument('--no-encode',  action='store_true', help='跳过 encode_zh.py（用已有 out/scripts_zh/）')
     ap.add_argument('--only',       help='只 apply 指定 file_id 列表（逗号分隔，e.g. 181,3）')
+    ap.add_argument('--no-strtbl',  action='store_true', help='跳过 strtbl apply（隔离测试用）')
     args = ap.parse_args()
 
     only = None
@@ -225,9 +246,17 @@ def main():
             step_d1_layout()           # D1: file 59 搬末尾 + 30-sector layout
             step_inject_font()         # 注入中文（含扩展 slot）
         else:                   print('\n[跳过] 字体注入')
-        if not args.no_encode:  step_encode_zh()
+        if not args.no_encode:
+            step_encode_zh()
+            step_encode_strtbl()
         else:                   print('\n[跳过] 编码')
         ok = step_apply(only=only)
+        if only is None and not args.no_strtbl:   # 完整 build 才跑 strtbl apply
+            step_apply_strtbl()
+            step_apply_strtbl_slps()
+            step_apply_savemenu()
+        elif args.no_strtbl:
+            print('\n[跳过] strtbl apply（隔离测试）')
         step_summary()
         print(f'\n⏱  总耗时: {time.time()-t_start:.1f}s')
         sys.exit(0 if ok else 1)
