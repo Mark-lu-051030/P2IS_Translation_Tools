@@ -295,11 +295,13 @@ P2IS_Translation_Tools/
 | `inject_chinese_font.py` | **D1 字体注入**：读 working ISO file 59 → 扩 decompressed → inject 中文到 og kanji slot + 扩展 slot（从低位2575↑紧凑分配，避免覆盖 UI 数据）+ og 缺的假名 → LZSS 重压缩 → 修 ECC | ✅ |
 | `encode_zh.py` | 把 script 翻译编码成字符码 items（含 META 段处理 + 全角标点 alias），输出 `out/scripts_zh/` | ✅ |
 | `encode_strtbl.py` | 把 strtbl 翻译编码成 items，输出 `out/strtbl_zh/`（文件名 regex 支持 SLUS 前缀=file 0） | ✅ |
-| `apply_zh.mjs` | 把编码好的对话二进制补丁写回 ISO（含 too_big 重定位 + 自动 ECC） | ✅ |
+| `apply_zh.mjs` | 把编码好的对话写回 ISO。`<file>`（不带 sub）一次处理该 file 所有 sub 合并 patch（**必须**，否则多 sub 互相覆盖）。支持 RLE/LZSS、relocate 三级降级、自动 ECC | ✅ |
 | `apply_strtbl.mjs` | strtbl 写回 archive 文件（**重建 count+索引表**，跳过 SLUS） | ✅ |
 | `apply_strtbl_slps.py` | SLPS file 0 内 strtbl 写回（raw-sector，重建索引表） | ✅ |
 | `savemenu_strtbl.py` | 存档/记忆卡菜单 extract+apply（ISO 游离区 sector 273695，保留前缀/控制码） | ✅ |
+| `mainmenu_strtbl.py` | 主菜单/提示语 extract+apply（游离区 sector 271864 两个文本区，原位替换不碰指针表） | ✅ |
 | `check_translation.py` | 校验翻译：进度 + hard 控制码守恒（SURNAME 软码豁免）+ codetable 缺字 | ✅ |
+| `locate_text.py` | 定位工具：`'日文'` 查它在哪个 file/游离区 + 该用哪个 pipeline（`--working` 搜改后 ISO） | ✅ |
 | `fix_ecc.py` | 修复 ISO ECC 校验码（各 apply 内部已调用） | ✅ |
 | `export_translatable.py` | 生成 `all_translatable.json`（含 jp / zh / meta_jp / meta_zh 字段）。**用 codetable_og.json 渲染 JP** 防止被字体注入后的中文 slot 污染 | ✅ |
 | `export_all_dialog.py` | （历史）纯文本对话提取；已不在主管道里 | 备用 |
@@ -507,18 +509,23 @@ node verify_full.mjs
 - ✅ **script 剧情对话 100%**（11445/11445 页）：DeepSeek-R1 批量翻译（11h/~CA$15）+ 手工补 199 条控制码密集对话
 - ✅ **strtbl UI/菜单 100%**（2939 条）：菜单/系统提示/技能说明/地点名/角色名。`encode_strtbl.py` + `apply_strtbl.mjs`(archive) + `apply_strtbl_slps.py`(SLPS file 0)，含索引表重建
 - ✅ **存档/记忆卡菜单**：`savemenu_strtbl.py` 处理 ISO 游离区 sector 273695（30 条系统消息）
+- ✅ **主菜单/提示语**：`mainmenu_strtbl.py` 处理游离区 sector 271864（魔法/道具/读取/保存 + "请选择指令"等提示，111 条，原位替换不碰指针表）
+- ✅ **apply_zh 4 大 bug 全修**（2026-05-30）：详见"六、apply_zh 写回的连环 bug"。11670+ 条对话全部 apply，含 RLE 剧情文件 + 140 条 relocate 长译文
 - ✅ **控制码守恒校验**：`check_translation.py`（SURNAME 软码可增减，其他 hard 码强制守恒）
-- ✅ **一键管道**：`build.py` 整合 还原→D1→字体→encode(script+strtbl)→apply(script+strtbl+SLPS+savemenu)→ECC
+- ✅ **定位工具**：`locate_text.py '日文'` 查任意日文在哪个 file/游离区，决定用哪个 pipeline
+- ✅ **一键管道**：`build.py` 整合 还原→D1→字体→encode(script+strtbl)→apply(script按file分组+strtbl+SLPS+savemenu+mainmenu)→ECC
 - ✅ **污染防御**（2026-05-24）：extract 只读 iso_backup；export 用 codetable_og 渲染 JP；build sanity check
 - ✅ **end-to-end 验证**：游戏从启动到主菜单到剧情/战斗全程中文（DuckStation tab 加速）
 
-**待解决：**
-- ⚠️ **Battle string**（26978 条/174 文件）：上游 extract_battle_strings 是半成品，解析全 false/垃圾，需重新逆向格式
-- ⚠️ **战斗菜单界面**（コマンドを選択して下さい / 魔法 / アイテム / ロード / セーブ 等）仍是日文 —— 文字来源未定位（不在已翻的 strtbl 0_0_0），疑似在 battle 相关表或别的未提取处
-- ⚠️ 对话框继续指示器三角 + L1/L2 按键图标 + HP/¥/TIME 标签颜色 — 非文字 UI 元素渲染问题（cosmetic）
-- ⚠️ 存档菜单「差込口X」插槽标签仍日文（SLPS 动态拼接，「込」缺字显示乱码，极小瑕疵）
+**关于 "battle string"**：⚠️ **不存在独立的 battle string**。上游 `extract_battle_strings` 是失败的半成品（条件 `f[0]==8` 在真实文件零匹配，全 false）。所谓"战斗/剧情对话没翻"实际是 **RLE 压缩的 script 文件（file 3/4 等）被 apply_zh 的 bug 坑了**，已全部修复。
+
+**待解决（niche，v2）：**
+- ⚠️ 设置菜单（CONFIGURATION MENU：サウンド/振動/マップ回転方向...）— 在 file 84 offset 135168 + 游离区 271964，特殊格式表，extract_string_tables 没识别
+- ⚠️ 命名界面（ひらがな/カタカナ/漢字 + 假名表）— 特殊格式
+- ⚠️ Persona/恶魔名（游离区 sec 210）、道具名（sec 200）— 系统数据表
+- ⚠️ 对话框三角 + L1/L2 图标 + HP/¥/TIME 颜色 — 非文字 UI 元素（cosmetic）
+- ⚠️ 存档菜单「差込口X」插槽标签（SLPS 动态拼接，极小瑕疵）
 - ⚠️ 人名一致性校对（可选润色）
-- ⚠️ 部分 diag 在 extract 阶段 parse 成 false（脚本死数据，游戏不显示，无影响）
 
 ### D1 字库扩容方案（2026-05-28 突破）
 
@@ -577,6 +584,31 @@ node verify_full.mjs
 7. 修改文件 59 sub-file 0 的 slot 16 → 游戏成功显示 草 ✅
 
 **教训：以后排查"修改无效"问题，第一步永远是验证 RAM/VRAM 实际是否包含修改后的数据。**
+
+---
+
+### apply_zh 写回的连环 bug（2026-05-30 全修）
+
+症状：游戏里大量剧情/战斗对话显示日文（甚至乱码），但 `all_translatable.json` 里明明有译文。根因是 `apply_zh.mjs` 写回阶段**4 个叠加的 bug**：
+
+**1. RLE vs LZSS 压缩**：file 3/4 等剧情脚本用 **RLE** 压缩（sub-file `byte[1]==1`），不是 LZSS（`byte[1]==2`）。apply 硬编码 LZSS 解压 → 解出垃圾 → 头部全乱 → **197 条对话判 no_offset 跳过**。
+   - 修复：按 `byte[1]` 选 `rle.decompress`/`lzss.decompress`；重压缩统一 LZSS 并强制 `byte[1]=2`（无 RLE 压缩器）。
+
+**2. 多 sub 互相覆盖**：一个 file 有多个 sub-file（file 90 有 160 个），都在同一 archive。旧 apply 每个 sub 从 backup 读整个 archive、只改 1 个、全量写 working → **后一个 sub 把前一个的中文覆盖回日文**，最终只剩最后 apply 的 sub。
+   - 修复：`apply_zh.mjs <file>`（不带 sub）**一次处理整个 file 的所有 sub**，合并成一次 `patch_archive_inplace`。`build.py` 按 file_id 分组调用。
+
+**3. archive padding 损坏**：紧排 archive（sub 间无 sector padding，如 file 90）里，sub 重压缩变短，留下的 0 被 `extract_files` 误判为 sector padding → 后续 sub 错位、archive 损坏（"Unexpected data at end of sector"）。
+   - 修复：`compress_with_header` 把 recomp 补齐到原 sub 的 4 字节对齐长度，len 字段写补齐后长度（解压看 uncomp_size 停，多余字节无害）。
+
+**4. relocate（append 重定位）被无条件回退**：译文比原文长的对话（**140 条**）会追加到 script 末尾 + 改 arg 指针重定向。但合并 patch 时，主流程 step1 **无条件把所有有 append 的 sub 回退成 in-place**（误以为 append 总超容量），丢弃全部 relocate → 长译文对话保留日文，但报告假报 `relocated:true success`。
+   - 修复：改成**三级降级**——先全用 append 版（保留 relocate）；某 sub 超容量才回退 in-place（放弃该 sub 的 append diag）；in-place 仍超才 drop（整 sub 保留原文）。
+
+**结果**：11670+ 条对话全部 apply，0 no_offset，relocate 长译文全恢复，只剩个别真超容量的保留原文。
+
+**经验**：
+- 验证翻译是否生效要看 **working ISO 实际解压字节**（用 `lib/archive.mjs` 的 `extract_files` + 解压 + 按指令表算 diag offset），不能只信 build 报告的 "success"（旧 apply 报 success 但被覆盖/回退）。
+- Python `pylib/p2is.py` 的 archive 解析器在改过的 archive 上可能报错/死循环；用 JS `lib/archive.mjs extract_files` 验证更可靠。
+- 看到没翻的日文，先 `python3 locate_text.py '日文'` 定位它在哪个 file/游离区，再决定 pipeline。
 
 ---
 

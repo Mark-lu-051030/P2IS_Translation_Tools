@@ -120,6 +120,10 @@ def step_apply_savemenu():
     step('4d. 把存档/记忆卡菜单写回 ISO (游离区 sector 273695)')
     run(['python3', 'savemenu_strtbl.py', 'apply'])
 
+def step_apply_mainmenu():
+    step('4e. 把主菜单写回 ISO (游离区 sector 271864)')
+    run(['python3', 'mainmenu_strtbl.py', 'apply'])
+
 def step_apply(only=None):
     """对 out/scripts_zh/ 里每个文件跑 apply_zh.mjs。
     only: set of file_id ints to filter, or None for all."""
@@ -130,28 +134,31 @@ def step_apply(only=None):
             if f.endswith('.json'):
                 os.remove(os.path.join(REPORT_DIR, f))
     files = sorted(os.listdir(SCRIPTS_ZH_DIR))
-    print(f'  out/scripts_zh/ 里 {len(files)} 个文件')
-    applied = 0
-    skipped = 0
-    failed = []
+    # 按 file_id 分组——apply_zh.mjs 不带 sub 参数时一次处理该 file 所有 sub
+    # （关键：同 file 多 sub 必须合并成一次 patch，否则逐 sub 写回互相覆盖）
+    file_ids = set()
     for fname in files:
         m = re.match(r'^(\d+)_(\d+)\.json$', fname)
-        if not m:
-            skipped += 1; continue
-        file_id, sub_id = int(m.group(1)), int(m.group(2))
-        if only is not None and file_id not in only:
-            skipped += 1; continue
-        print(f'\n  → apply file {file_id} sub {sub_id}')
+        if not m: continue
+        fid = int(m.group(1))
+        if only is not None and fid not in only: continue
+        file_ids.add(fid)
+    file_ids = sorted(file_ids)
+    print(f'  out/scripts_zh/ 里 {len(files)} 个文件，{len(file_ids)} 个 file_id')
+    applied = 0
+    failed = []
+    for file_id in file_ids:
+        print(f'\n  → apply file {file_id} (所有 sub)')
         try:
-            run(['node', 'apply_zh.mjs', str(file_id), str(sub_id)])
+            run(['node', 'apply_zh.mjs', str(file_id)])
             applied += 1
         except subprocess.CalledProcessError as e:
-            failed.append((file_id, sub_id, str(e)))
-            print(f'  ✗ apply {file_id}_{sub_id} 失败: {e}')
-    print(f'\n  Apply 总结: {applied} 成功 / {skipped} 跳过 / {len(failed)} 失败')
+            failed.append((file_id, str(e)))
+            print(f'  ✗ apply file {file_id} 失败: {e}')
+    print(f'\n  Apply 总结: {applied} 个 file 成功 / {len(failed)} 失败')
     if failed:
-        for f, s, err in failed:
-            print(f'    ✗ {f}_{s}: {err}')
+        for fid, err in failed:
+            print(f'    ✗ file {fid}: {err}')
         return False
     return True
 
@@ -255,6 +262,7 @@ def main():
             step_apply_strtbl()
             step_apply_strtbl_slps()
             step_apply_savemenu()
+            step_apply_mainmenu()
         elif args.no_strtbl:
             print('\n[跳过] strtbl apply（隔离测试）')
         step_summary()

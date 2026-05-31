@@ -5430,7 +5430,7 @@
     "pages": [
       {
         "jp": "\n<SURNAME/>へイ<SURNAME/>エブリバデ、今度は二股だ。\n<SURNAME/>ライト<SURNAME/>オア<SURNAME/>レフト?\n<SURNAME/>チヨイス<SURNAME/>ナ〜ウ!\n",
-        "zh": "\n<SURNAME/>嘿<SURNAME/>艾瑞巴迪，这次是脚踏两条船。\n<SURNAME/>左边<SURNAME/>还是<SURNAME/>右边？\n<SURNAME/>选一个吧<SURNAME/>纳呜~！\n"
+        "zh": "<SURNAME/>嘿<SURNAME/>各位，这次分两路。\n<SURNAME/>左<SURNAME/>还是<SURNAME/>右?\n<SURNAME/>快选<SURNAME/>吧~!"
       }
     ],
     "meta_jp": "栄吉",
@@ -5440,7 +5440,7 @@
     "id": "script:90_76:diag1",
     "pages": [],
     "meta_jp": "<SURNAME/>チヨイス<SURNAME/>ナ〜ウ!\n<option:2/>レフト\nライト\n<option_end/><c02/>",
-    "meta_zh": "<SURNAME/>Choice< SURNAME/>Now～!\n<option:2/>Left\nRight\n<option_end/><c02/>"
+    "meta_zh": "<SURNAME/>快选<SURNAME/>吧~!\n<option:2/>左\n右\n<option_end/><c02/>"
   },
   {
     "id": "script:90_77:diag0",
@@ -6184,7 +6184,7 @@
     "pages": [
       {
         "jp": "\n<SURNAME/>深き<SURNAME/>御山の森に\n<SURNAME/>招かざる子ガ<SURNAME/>迷い来る",
-        "zh": "\n<SURNAME/>深深<SURNAME/>御山之森中\n<SURNAME/>不请自来子<SURNAME/>迷途而来"
+        "zh": "<SURNAME/>幽深<SURNAME/>御山林中\n<SURNAME/>不速之客<SURNAME/>迷途至此"
       }
     ],
     "meta_jp": "地蔵",
@@ -6382,7 +6382,7 @@
     "pages": [
       {
         "jp": "\n<SURNAME/>この感じ…栄吉だね。<pause:30/>\n<SURNAME/><c12/>、栄吉ガ呼んでるよ。\n<SURNAME/>この先だ。\n",
-        "zh": "\n<SURNAME/>这种感觉…是荣吉吧。<pause:30/>\n<SURNAME/><c12/>，荣吉在呼唤哦。\n<SURNAME/>就在前面。\n"
+        "zh": "<SURNAME/>这感觉…是荣吉。<pause:30/>\n<SURNAME/><c12/>，荣吉在叫你。\n<SURNAME/>就在前面。"
       }
     ],
     "meta_jp": "ゆきの",
@@ -7147,7 +7147,7 @@
     "pages": [
       {
         "jp": "\n<SURNAME/>このソエジマのバイクさ、\n<SURNAME/><c12/>ガ自分でメンテしたりしてんだろ?\n<SURNAME/>メカに強いって噂は本当だったんだな。",
-        "zh": "\n<SURNAME/>这副岛的摩托，\n<SURNAME/>是<c12/>你自己保养的吧？\n<SURNAME/>看来你擅长机械的传闻是真的。\n"
+        "zh": "\n<SURNAME/>这辆副岛摩托，\n<SURNAME/>是<c12/>你自己保养的吧？\n<SURNAME/>看来你擅长机械的传闻是真的。\n"
       }
     ],
     "meta_jp": "男子生徒",
@@ -37512,7 +37512,7 @@
       }
     ],
     "meta_jp": "<偉大なる反谷<SURNAME/>孝志校長を称える像>",
-    "meta_zh": "<颂扬伟大的反谷<SURNAME/>孝志校长的像>"
+    "meta_zh": "「颂扬伟大的反谷<SURNAME/>孝志校长的像」"
   },
   {
     "id": "script:353_8:diag9",
@@ -37523,7 +37523,7 @@
       }
     ],
     "meta_jp": "<偉大なる反谷<SURNAME/>孝志校長を称える像>",
-    "meta_zh": "<颂扬伟大的反谷<SURNAME/>孝志校长的像>"
+    "meta_zh": "「颂扬伟大的反谷<SURNAME/>孝志校长的像」"
   },
   {
     "id": "script:354_8:diag0",
@@ -37723,7 +37723,7 @@
     "pages": [
       {
         "jp": "\n<SURNAME/>モーやだ!\n<SURNAME/>さっきからおんなじ景色ばっか!!\n<SURNAME/>あきたあきたあきた〜!<unk7/>",
-        "zh": "\n<SURNAME/>真是够了！\n<SURNAME/>从刚才开始就一直是同样的景色！！\n<SURNAME/>腻了腻了腻了～!<unk7/>"
+        "zh": "<SURNAME/>烦死了！\n<SURNAME/>从刚才就全是一样的景色！\n<SURNAME/>腻了腻了～!<unk7/>"
       }
     ],
     "meta_jp": "ギンコ",
@@ -37734,7 +37734,7 @@
     "pages": [
       {
         "jp": "\n<SURNAME/>ギャーギャー騒ぐな!!\n<SURNAME/>じゃあなにか?<SURNAME/>映画のお約束よろしく、\n<SURNAME/>滝でもありゃ満足なのか?<SURNAME/>ええ!?<unk7/>",
-        "zh": "\n<SURNAME/>别叽叽喳喳吵了!!\n<SURNAME/>那要怎样？<SURNAME/>像电影套路那样，\n<SURNAME/>有瀑布就满意了？<SURNAME/>嗯!?<unk7/>"
+        "zh": "<SURNAME/>别吵了!!\n<SURNAME/>那想怎样?<SURNAME/>按电影套路，\n<SURNAME/>有瀑布就满意?<SURNAME/>啊!?<unk7/>"
       }
     ],
     "meta_jp": "栄吉",
@@ -37745,7 +37745,7 @@
     "pages": [
       {
         "jp": "\n<SURNAME/>シッ!<SURNAME/>静かに…<pause:30/>\n<SURNAME/>この音…まさか!?<unk7/>",
-        "zh": "\n<SURNAME/>嘘！<SURNAME/>安静点…<pause:30/>\n<SURNAME/>这个声音…难道!?<unk7/>"
+        "zh": "<SURNAME/>嘘!<SURNAME/>安静…<pause:30/>\n<SURNAME/>这声音…难道!?<unk7/>"
       }
     ],
     "meta_jp": "舞耶",
@@ -37756,7 +37756,7 @@
     "pages": [
       {
         "jp": "\n<SURNAME/>う、うそ〜ん!?<unk7/>",
-        "zh": "\n<SURNAME/>不、不是吧～!?<unk7/>"
+        "zh": "<SURNAME/>不、不会吧～!?<unk7/>"
       }
     ],
     "meta_jp": "ギンコ<SURNAME/><c13/><SURNAME/>淳<SURNAME/>栄吉",
@@ -48834,7 +48834,7 @@
       }
     ],
     "meta_jp": "<偉大なる反谷<SURNAME/>孝志校長を称える像>",
-    "meta_zh": "<伟大的反谷<SURNAME/>孝志校长颂扬像>"
+    "meta_zh": "「伟大的反谷<SURNAME/>孝志校长颂扬像」"
   },
   {
     "id": "script:440_8:diag2",
@@ -49053,7 +49053,7 @@
       }
     ],
     "meta_jp": "<偉大なる反谷<SURNAME/>孝志校長を称える像>",
-    "meta_zh": "<为伟大的反谷孝志校长而立的颂扬像>"
+    "meta_zh": "「为伟大的反谷孝志校长而立的颂扬像」"
   },
   {
     "id": "script:441_8:diag11",
