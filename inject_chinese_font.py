@@ -52,6 +52,8 @@ SUBFILE_1_OFFSET = 30 * 2048    # D1 layout: sub-file 1 在 30 sectors offset
 
 # SECTOR/BLOCK 常量、扇区 IO、LZSS、archive 解析 都从 pylib.p2is 引入
 from pylib.p2is import SECTOR, BLOCK_OFF, BLOCK_SIZE
+# 动态 N：重压缩后把 Desc1.size 精确设为 ceil(recomp/2048)，根治 UI sprite 溢出
+from patch_subfile_table import set_subfile0_size
 
 # ── 字形渲染 ────────────────────────────────────────────────────────────────
 
@@ -99,6 +101,25 @@ def main():
         for page in entry.get('pages', []):
             collect_chars(page.get('zh', '') or '')
         collect_chars(entry.get('meta_zh', '') or '')
+    # 同时收集菜单/名表 json 的 zh（这些表译文不在 all_translatable.json，
+    # 但游戏里要显示中文，字形必须也注入 → 否则缺字形）
+    """extra_jsons = ['nametable_zh.json', 'savemenu_zh.json', 'mainmenu_zh.json',
+                   'config_zh.json', 'naming_zh.json', 'contactui_zh.json',
+                   'names_zh.json']"""
+    extra_jsons = []
+    for fn in extra_jsons:
+        p = os.path.join(ROOT, 'out', fn)
+        if not os.path.exists(p):
+            continue
+        try:
+            items = json.load(open(p, encoding='utf-8'))
+        except Exception:
+            continue
+        cnt0 = sum(freq.values())
+        for it in (items if isinstance(items, list) else []):
+            if isinstance(it, dict):
+                collect_chars(it.get('zh', '') or '')
+        print(f'      + {fn}: 新增字频 {sum(freq.values()) - cnt0}')
     # 按频率从高到低排序，频率相同按 unicode 顺序
     needed = sorted(freq.keys(), key=lambda c: (-freq[c], c))
     print(f'      需要 {len(needed)} 个汉字（按频率排序，高频在前）')
@@ -255,14 +276,17 @@ def main():
     struct.pack_into('<I', recomp, 8, len(decompressed))
     print(f'      重压缩 sub-file 0: {len(recomp)} 字节 (uncomp_size header = {len(decompressed)})')
 
-    # === D1 容量策略 ===
-    # D1 layout: sub-file 0 占 [0, 30 sectors), sub-file 1 在 30 sectors offset
-    # SLPS 已 patch 读 30 sectors of sub-file 0
+    # === D1 容量策略 + 动态 N ===
+    # D1 layout: sub-file 0 占 [0, N sectors), sub-file 1 固定在 30 sectors offset
+    # N = ceil(recomp/2048) = CD 读 sub-file 0 的扇区数（Desc1.size）。
+    # N 必须 ≤ 30（sub-file 1 的位置 / 容量上限）。
     if len(recomp) > SUBFILE_1_OFFSET:
         print(f'错误：sub-file 0 重压缩 ({len(recomp)}) 超过 30 sectors ({SUBFILE_1_OFFSET})')
         print(f'      减少 inject 字数 或 调低 EXPANDED_DECOMP_SIZE')
         sys.exit(1)
+    n_sectors = (len(recomp) + BLOCK_SIZE - 1) // BLOCK_SIZE
     print(f'      D1 容量 OK ({len(recomp)} ≤ {SUBFILE_1_OFFSET} = 30 sectors)')
+    print(f'      动态 N = ceil({len(recomp)}/2048) = {n_sectors} sectors (Desc1.size 将精确设为此值)')
 
     # 拼新 archive：sub-file 0 重压缩 + 零 padding + sub-file 1 原内容
     sub1_orig = bytes(arch[SUBFILE_1_OFFSET:])
@@ -282,10 +306,16 @@ def main():
         json.dump(new_ct, f, ensure_ascii=False, separators=(',', ':'))
     print(f'      codetable.json 已更新（{len(new_ct)} 条 = og {len(ct_og)} + 新中文 {len(assignments)} - 覆盖）')
 
-    # 修 ECC
+    # 修 ECC（file 59 区域）
     sector_count = (size59 + BLOCK_SIZE - 1) // BLOCK_SIZE
     lba_end = block59 + sector_count - 1
     subprocess.run(['python3', FIX_ECC, str(block59), str(lba_end)], check=True)
+
+    # === 动态 N：把 Desc1.size 精确设为压缩后扇区数（根治 UI sprite 溢出）===
+    # Desc1.size = CD 读 sub-file 0 的扇区数。它 > 实际压缩扇区数时，
+    # CD 多读的扇区溢出 7-slot ring buffer → 损坏字库/相邻 RAM（HP/SP/¥/TIME/三角标）。
+    # set_subfile0_size 改 sector 29 Desc1 低 16 位并修该扇区 ECC（Desc2.offset=30 不动）。
+    set_subfile0_size(ISO_PATH, n_sectors, fix_ecc=True)
 
     print(f'\n✅ 完成。{len(assignments)} 个汉字已注入文件 59 sub-file 0')
     print('下一步：python3 encode_zh.py → node apply_zh.mjs <file> <sub>')

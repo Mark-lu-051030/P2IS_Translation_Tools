@@ -51,7 +51,7 @@ const size  = fileposdat.readUInt32LE(N * 8 + 4);  // 字节数
 | 文件号 | 文件名 | 内容 |
 |--------|--------|------|
 | **59** | — | **对话字体（LZSS 压缩，2 个 sub-file，每个解压 65520 字节）** ⭐ |
-| 86 | F0086.BIN | 字体的"参考副本"——格式相同但**游戏运行时不读取**（曾误以为是字体源） |
+| 86 | F0086.BIN | 裸未压缩字库（格式同 file 59 解压后）。**对话不读它（读 file 59）；但命名界面等非对话画面读 file 86**——`inject_font_f86.py` 同步中文字形进去 |
 | 181 | — | 开头霸凌场景脚本 |
 | 3 | — | 学校走廊场景脚本 |
 
@@ -70,11 +70,11 @@ const size  = fileposdat.readUInt32LE(N * 8 + 4);  // 字节数
 | 字节 | 字段 | 说明 |
 |------|------|------|
 | 0 | type | 类型（1 = LZSS 压缩脚本） |
-| 1 | subtype | 子类型（2 = 场景脚本） |
+| 1 | subtype / 压缩 | **同时决定解压方式（1=RLE，2=LZSS）+ 场景脚本 subtype。⚠ 重压缩必须保留原值**：RLE 文件(byte[1]=1)被强行改成 2 → cutscene/战斗白屏（见"四、踩过的坑"） |
 | 2–3 | sub_index | sub-file 序号（uint16 LE）⚠️ 重要 |
 | 4–7 | total_size | 该 sub-file 总字节数（含头部） |
 | 8–11 | uncomp_size | 解压后字节数 |
-| 12+ | — | LZSS 压缩数据 |
+| 12+ | — | 压缩数据（byte[1]=2 → LZSS，=1 → RLE） |
 
 `lib/archive.mjs` 处理 archive 的读写：
 - `extract_files(buff)` → 返回 sub-file Buffer 数组
@@ -192,7 +192,7 @@ Items 格式：
 
 ### 层级 7：字体文件（文件 59，sub-file 0）⭐
 
-> **⚠️ 重要修正**：之前以为字体在 `F0086.BIN`（文件 86），实际**完全错了**。游戏运行时根本不读 F0086.BIN，它只是格式相同的"参考副本"。真正使用的字体在**文件 59 sub-file 0**，LZSS 压缩。详见"五、踩过的坑"中的字体定位事件。
+> **⚠️ 重要修正**：之前以为字体在 `F0086.BIN`（文件 86），实际**对话字体在文件 59 sub-file 0**（LZSS 压缩），不是 86。详见"五、踩过的坑"中的字体定位事件。**再修正**：file 86 也不是全无用——**命名界面等非对话画面读的就是 file 86**（裸字库），所以 `inject_font_f86.py` 要把中文字形同步进去。
 
 **文件结构：**
 
@@ -264,6 +264,7 @@ SLPS sub-file 描述符表 @ RAM 0x80010070-0x8001007f (ISO sector 29 offset 0x7
 |------|------|
 | `archive.mjs` | Archive 解包 / 打包 |
 | `lzss.mjs` | LZSS 压缩 / 解压 |
+| `rle.mjs` | RLE 压缩 / 解压。file 3/4 等剧情/战斗脚本用 RLE；`compress`（与 decompress token 格式对应）让 RLE 文件翻译后压回 RLE、保持 `byte[1]` subtype 不变——是觉醒/战斗白屏的修复关键 |
 | `cdimage.mjs` | ISO 扇区读写，管理 FILEPOS.DAT |
 | `msg_script.mjs` | 对话解析 / 编译（唯一可靠的对话工具） |
 | `msg_commands.mjs` | 控制码常量定义 |
@@ -289,19 +290,25 @@ P2IS_Translation_Tools/
 
 | 文件 | 作用 | 状态 |
 |------|------|------|
-| **`build.py`** | **一键完整管道**：还原 ISO → D1 patch → file 59 搬末尾 → 注字体 → 编码 zh → 写回 ISO → 修 ECC → 报告 | ⭐ 主入口 |
+| **`build.py`** | **一键完整管道**：还原 ISO → D1（patch 描述符 + 搬 file 59 + 注字体 + 同步 file 86）→ 编码 zh/strtbl → apply（脚本按 file 分组 + strtbl + SLPS + savemenu + mainmenu + nametable + freetbl 三表）→ 修 ECC → 报告 | ⭐ 主入口 |
 | `patch_subfile_table.py` | **D1 扩容 Step 1**：patch SLPS sub-file 描述符表（Desc1+Desc2 22→30 sectors） | ✅ |
 | `relocate_file59.py` | **D1 扩容 Step 2**：把 file 59 搬到 ISO 末尾 + sub-file 1 在 30 sectors offset；同时更新 FILEPOS.DAT 和 PVD | ✅ |
-| `inject_chinese_font.py` | **D1 字体注入**：读 working ISO file 59 → 扩 decompressed → inject 中文到 og kanji slot + 扩展 slot（从低位2575↑紧凑分配，避免覆盖 UI 数据）+ og 缺的假名 → LZSS 重压缩 → 修 ECC | ✅ |
+| `inject_chinese_font.py` | **D1 字体注入**：读 working ISO file 59 → 扩 decompressed → inject 中文到 og kanji slot + 扩展 slot（从低位2575↑紧凑分配，避免覆盖 UI 数据）+ og 缺的假名 → LZSS 重压缩 → 修 ECC。除 all_translatable 外也扫 `out/*_zh.json`（各表用字）；用 `patch_subfile_table.set_subfile0_size` 按实际大小设动态 N | ✅ |
+| `inject_font_f86.py` | **file 86 字体同步**：命名界面等画面读 file 86（裸未压缩字库，非 file 59）；把注入 file 59 的同批中文字形（codetable≠og 的槽）写进 file 86 | ✅ |
 | `encode_zh.py` | 把 script 翻译编码成字符码 items（含 META 段处理 + 全角标点 alias），输出 `out/scripts_zh/` | ✅ |
 | `encode_strtbl.py` | 把 strtbl 翻译编码成 items，输出 `out/strtbl_zh/`（文件名 regex 支持 SLUS 前缀=file 0） | ✅ |
-| `apply_zh.mjs` | 把编码好的对话写回 ISO。`<file>`（不带 sub）一次处理该 file 所有 sub 合并 patch（**必须**，否则多 sub 互相覆盖）。支持 RLE/LZSS、relocate 三级降级、自动 ECC | ✅ |
+| `apply_zh.mjs` | 把编码好的对话写回 ISO。`<file>`（不带 sub）一次处理该 file 所有 sub 合并 patch（**必须**，否则多 sub 互相覆盖）。**RLE 文件用 rle.compress 压回 RLE、保留原 byte[1] subtype**（觉醒/战斗白屏修复），LZSS 压回 LZSS，relocate 三级降级，自动 ECC | ✅ |
 | `apply_strtbl.mjs` | strtbl 写回 archive 文件（**重建 count+索引表**，跳过 SLUS） | ✅ |
 | `apply_strtbl_slps.py` | SLPS file 0 内 strtbl 写回（raw-sector，重建索引表） | ✅ |
 | `savemenu_strtbl.py` | 存档/记忆卡菜单 extract+apply（ISO 游离区 sector 273695，保留前缀/控制码） | ✅ |
-| `mainmenu_strtbl.py` | 主菜单/提示语 extract+apply（游离区 sector 271864 两个文本区，原位替换不碰指针表） | ✅ |
+| `mainmenu_strtbl.py` | 主菜单/提示语 extract+apply（游离区 sector 271864 两个文本区，原位替换不碰指针表，短项前补全角空格居中） | ✅ |
+| `nametable_strtbl.py` | 道具/Persona/技能/恶魔名主表 extract+apply（游离区 sector 200，~1639 条，原位等长替换） | ✅ |
+| `freetbl.py` | **通用游离区 strtbl 引擎**（注册表 TABLES 驱动）：`names`(221) / `contactui`(271039) / `config`(271964)。原位等长替换不碰指针表；含带参控制码的条目整条 skip 防崩 | ✅ |
 | `check_translation.py` | 校验翻译：进度 + hard 控制码守恒（SURNAME 软码豁免）+ codetable 缺字 | ✅ |
 | `locate_text.py` | 定位工具：`'日文'` 查它在哪个 file/游离区 + 该用哪个 pipeline（`--working` 搜改后 ISO） | ✅ |
+| `lookup_char.py` | 字符 ↔ slot 互查（codetable 调试） | 工具 |
+| `name_fix.py` | 一次性：批量替换 all_translatable 里指定人名（对齐 PSP 译名），写 `.namebak` 备份 | 工具 |
+| `audit_untranslated.py` / `scan_untranslated.py` | 游离区聚簇扫未翻文本。**实验性**：纯文本表可靠，码密集区误报多（见 memory），长尾靠玩家反馈补 | 实验 |
 | `fix_ecc.py` | 修复 ISO ECC 校验码（各 apply 内部已调用） | ✅ |
 | `export_translatable.py` | 生成 `all_translatable.json`（含 jp / zh / meta_jp / meta_zh 字段）。**用 codetable_og.json 渲染 JP** 防止被字体注入后的中文 slot 污染 | ✅ |
 | `export_all_dialog.py` | （历史）纯文本对话提取；已不在主管道里 | 备用 |
@@ -496,6 +503,8 @@ node verify_full.mjs
 | **以为 atlus 前总是崩** | 所有"atlus 前黑屏"测试都没等够时间！PSX LZSS decode 很慢 + cdrom 流式加载，game 在 loading 状态 | DuckStation 按 tab 加速验证 ROM hack 必备 |
 | **D1 patch Desc1+Desc2 atlus 前崩** | 实际并没崩——只是 LZSS decode + cdrom 加载慢，没等够时间误以为黑屏 | 同上：DuckStation tab 加速 |
 | **MIPS unaligned access 在 Ghidra Decompile 里很乱** | `lwl/lwr` 配对在反编译里看着像奇怪的 bit-shift 写操作 | 切到 Listing 视图看实际指令；References 标记的 R/W 是可信的 |
+| **觉醒/战斗场景纯白屏（2026-06-01，调试最久）** | sub-file 头 `byte[1]` 是**场景脚本 subtype**（不是压缩类型）。apply 把 RLE 剧情/战斗脚本(file 3/4)重压成 LZSS 时强制 `r[1]=2`，改掉了 subtype → cutscene/战斗引擎据 byte[1] 走错处理 → 进场景 hang 纯白屏（debugger 无异常）。LZSS 文件本就 byte[1]=2 故无事，只有 RLE 文件中招 | `lib/rle.mjs` 实现 `compress`；apply 的 `compress_with_header` 对 `byte[1]==1` 的 sub 用 `rle.compress` 压回 RLE、保留原 byte[1]（不再强制 =2）。**铁证**：commit 53d3c1a(RLE 文件未翻=原版 RLE)正常 vs c408510(RLE 翻成 LZSS)白。⚠ 中途误判为"短译文 0x00 填充/改空格填充"，是弯路、已证伪 |
+| **worktree build 出来整个游戏是日文** | 新建的 git worktree 没有 conf.json，apply 找不到工作 ISO 路径写不进去；step_restore 又把 ISO 还原成 backup → 整盘日文 | 在 worktree 里 build 前先 `cp 主仓/conf.json`；或直接在主仓 build。诊断时务必先验证 working ISO 真翻译了（file 181/4 解压 ≠ backup）再下结论 |
 
 ---
 
@@ -516,16 +525,20 @@ node verify_full.mjs
 - ✅ **一键管道**：`build.py` 整合 还原→D1→字体→encode(script+strtbl)→apply(script按file分组+strtbl+SLPS+savemenu+mainmenu)→ECC
 - ✅ **污染防御**（2026-05-24）：extract 只读 iso_backup；export 用 codetable_og 渲染 JP；build sanity check
 - ✅ **end-to-end 验证**：游戏从启动到主菜单到剧情/战斗全程中文（DuckStation tab 加速）
+- ✅ **觉醒/战斗白屏根治**（2026-06-01）：真因是 apply 把 RLE 脚本(file 3/4)重压成 LZSS 改了 `byte[1]` subtype → 引擎走错处理白屏。`lib/rle.mjs` 加 RLE `compress`，RLE 文件翻译后保持 byte[1]=1、与原版结构同构。已游戏内验证觉醒/战斗正常。详见"四、踩过的坑"+"六"bug #1
+- ✅ **游离区 UI/名表**（2026-05-31）：道具/Persona/技能/恶魔名主表（sector 200，`nametable_strtbl.py`，~1639条）、角色姓名/昵称（221）、交涉动作+战斗UI（271039）、设置菜单（271964）—— `freetbl.py` 通用游离区引擎（注册表驱动），原位等长替换不碰指针表；带参控制码条目整条 skip 防崩
+- ✅ **file 86 字体同步**（`inject_font_f86.py`）：命名界面等画面读的是 file 86（裸未压缩字库，非 file 59），把注入 file 59 的同批字形同步进去
+- ✅ **字体动态 N + 主菜单居中**：`patch_subfile_table.set_subfile0_size` 按实际重压缩大小设 SLPS Desc1（修 UI 精灵错乱）；`mainmenu_strtbl.py` 短菜单项前补全角空格居中
 
-**关于 "battle string"**：⚠️ **不存在独立的 battle string**。上游 `extract_battle_strings` 是失败的半成品（条件 `f[0]==8` 在真实文件零匹配，全 false）。所谓"战斗/剧情对话没翻"实际是 **RLE 压缩的 script 文件（file 3/4 等）被 apply_zh 的 bug 坑了**，已全部修复。
+**关于 "battle string"**：⚠️ **不存在独立的 battle string**。上游 `extract_battle_strings` 是失败的半成品（条件 `f[0]==8` 在真实文件零匹配，全 false）。所谓"战斗/剧情对话没翻"实际是 **RLE 压缩的 script 文件（file 3/4 等）被 apply_zh 的 bug 坑了**，已全部修复（最后一个坑是重压缩改了 byte[1] subtype 致白屏，2026-06-01 修，见"四、踩过的坑"）。
 
 **待解决（niche，v2）：**
-- ⚠️ 设置菜单（CONFIGURATION MENU：サウンド/振動/マップ回転方向...）— 在 file 84 offset 135168 + 游离区 271964，特殊格式表，extract_string_tables 没识别
-- ⚠️ 命名界面（ひらがな/カタカナ/漢字 + 假名表）— 特殊格式
-- ⚠️ Persona/恶魔名（游离区 sec 210）、道具名（sec 200）— 系统数据表
+- ⚠️ **左上角地点名乱码**（2026-06-01 发现，未解决）：场景切换时左上角显示的地点名是乱码，疑似字符码/字库槽不匹配或读取路径未覆盖，待查
+- ⚠️ **命名界面**：标签页(ひらがな/カタカナ/漢字)、DEL 是图片精灵（文本搜不到）；中间汉字大网格是输入字母表（不该翻）。少量代码 overlay 标签需 Ghidra
+- ⚠️ 个别超长对话保留原文（如 `90_126`，重压缩超 archive 槽容量，缩短译文可塞入）
 - ⚠️ 对话框三角 + L1/L2 图标 + HP/¥/TIME 颜色 — 非文字 UI 元素（cosmetic）
 - ⚠️ 存档菜单「差込口X」插槽标签（SLPS 动态拼接，极小瑕疵）
-- ⚠️ 人名一致性校对（可选润色）
+- ⚠️ 人名一致性校对（NPC 名对齐 PSP，进行中）
 
 ### D1 字库扩容方案（2026-05-28 突破）
 
@@ -592,7 +605,7 @@ node verify_full.mjs
 症状：游戏里大量剧情/战斗对话显示日文（甚至乱码），但 `all_translatable.json` 里明明有译文。根因是 `apply_zh.mjs` 写回阶段**4 个叠加的 bug**：
 
 **1. RLE vs LZSS 压缩**：file 3/4 等剧情脚本用 **RLE** 压缩（sub-file `byte[1]==1`），不是 LZSS（`byte[1]==2`）。apply 硬编码 LZSS 解压 → 解出垃圾 → 头部全乱 → **197 条对话判 no_offset 跳过**。
-   - 修复：按 `byte[1]` 选 `rle.decompress`/`lzss.decompress`；重压缩统一 LZSS 并强制 `byte[1]=2`（无 RLE 压缩器）。
+   - 修复（2026-05-30）：按 `byte[1]` 选 `rle.decompress`/`lzss.decompress` 解压。⚠ 当时无 RLE 压缩器、重压缩统一 LZSS 并强制 `byte[1]=2`——**这正是后来觉醒/战斗白屏的真因**（改掉了 RLE 脚本的 subtype）。**2026-06-01 补修**：`lib/rle.mjs` 加 `compress`，RLE 文件压回 RLE、保留 `byte[1]=1`，与原版结构同构（详见"四、踩过的坑"觉醒白屏）。
 
 **2. 多 sub 互相覆盖**：一个 file 有多个 sub-file（file 90 有 160 个），都在同一 archive。旧 apply 每个 sub 从 backup 读整个 archive、只改 1 个、全量写 working → **后一个 sub 把前一个的中文覆盖回日文**，最终只剩最后 apply 的 sub。
    - 修复：`apply_zh.mjs <file>`（不带 sub）**一次处理整个 file 的所有 sub**，合并成一次 `patch_archive_inplace`。`build.py` 按 file_id 分组调用。

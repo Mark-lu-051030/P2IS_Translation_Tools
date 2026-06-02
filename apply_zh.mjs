@@ -139,11 +139,13 @@ function processSub(arch_buf, sub_id) {
 
   if (changed === 0) return { recomp: null, report };
 
-  // 重压缩（统一 LZSS，byte[1]=2）
+  // 重压缩：RLE 文件(byte[1]==1)仍压成 RLE，LZSS 仍 LZSS —— 绝不改 byte[1]。
+  // ⚠ 关键修复(2026-06-01)：旧版强制 r[1]=2 把 RLE 剧情/战斗脚本(file 3/4 等)的
+  //   subtype 从 1 改成 2，cutscene/战斗引擎据 byte[1] 走错处理 → 进场景纯白屏。
+  //   实证：53d3c1a(RLE文件未翻=原版RLE)正常 vs c408510(RLE翻成LZSS,byte1=2)白屏。
   function compress_with_header(buf) {
-    const r = lzss.compress(buf, 0xc, true);
-    r.writeUInt32LE(sub.readUInt32LE(0), 0);
-    r[1] = 2;
+    const r = comp_type === 1 ? rle.compress(buf, 0xc) : lzss.compress(buf, 0xc, true);
+    r.writeUInt32LE(sub.readUInt32LE(0), 0);   // 保留原 tag（byte[1]=subtype 保持不变）
     r.writeUInt32LE(r.byteLength, 4);
     r.writeUInt32LE(buf.byteLength, 8);
     // ⚠ 紧排 archive（如 file 90）的 sub 之间无 sector padding。若 recomp 比原 sub 短，

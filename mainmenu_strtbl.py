@@ -80,6 +80,8 @@ def cmd_apply():
     for fw, hw in {'！':'!','？':'?','…':'.','，':'、','。':'。','：':':','；':';','（':'(','）':')','　':' ','~':'〜','—':'-','·':'・','《':'「','》':'」'}.items():
         if hw in rev and fw not in rev: rev[fw] = rev[hw]
 
+    pad_code = rev.get('　', rev.get(' '))   # 全角空格码（居中用）
+
     import re
     def encode(text):
         items = []
@@ -117,7 +119,12 @@ def cmd_apply():
         if items is None:
             print(f'  [{s["idx"]}] 缺字跳过: {zh!r}')
             skipped += 1; continue
-        items = items + [[3]]   # 末尾终止符
+        # 居中：原槽位宽度内，文本前补一半全角空格（游戏读到 0x1103 停，前导空格把字推到中间）
+        # 长句 zh≈原长 → leading≈0 自然不受影响，只有短菜单项会居中
+        slot_u16 = s['byte_len'] // 2          # 槽位 uint16 数（含原终止符）
+        body = len(items) + 1                  # 中文 + 终止符
+        leading = max(0, (slot_u16 - body) // 2) if pad_code is not None else 0
+        items = [pad_code] * leading + items + [[3]]   # 前导空格 + 中文 + 终止符
         b = items_bytes(items)
         if len(b) > s['byte_len']:
             print(f'  [{s["idx"]}] 太长跳过: {zh!r} ({len(b)}B > 原 {s["byte_len"]}B)')

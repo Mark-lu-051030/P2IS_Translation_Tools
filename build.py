@@ -100,6 +100,10 @@ def step_inject_font():
     step('2c. 注入中文字体 → 文件 59 sub-file 0 (含 D1 扩容 inject)')
     run(['python3', 'inject_chinese_font.py'])
 
+def step_inject_font_f86():
+    step('2d. 同步中文字体 → 文件 86 (命名界面等画面读的独立字库，裸未压缩)')
+    run(['python3', 'inject_font_f86.py'])
+
 def step_encode_zh():
     step('3. 编码 zh 翻译 → out/scripts_zh/')
     run(['python3', 'encode_zh.py'])
@@ -123,6 +127,22 @@ def step_apply_savemenu():
 def step_apply_mainmenu():
     step('4e. 把主菜单写回 ISO (游离区 sector 271864)')
     run(['python3', 'mainmenu_strtbl.py', 'apply'])
+
+def step_apply_nametable():
+    step('4f. 把道具/Persona/技能名主表写回 ISO (游离区 sector 200, 原位等长替换)')
+    run(['python3', 'nametable_strtbl.py', 'apply'])
+
+def step_apply_contactui():
+    step('4g. 把交涉/战斗UI表写回 ISO (freetbl, 游离区 sector 271039, 原位等长保留格式码)')
+    run(['python3', 'freetbl.py', 'contactui', 'apply'])
+
+def step_apply_config():
+    step('4h. 把设置菜单写回 ISO (freetbl, 游离区 sector 271964, 原位等长保留格式码)')
+    run(['python3', 'freetbl.py', 'config', 'apply'])
+
+def step_apply_names():
+    step('4i. 把角色名表写回 ISO (freetbl, 游离区 sector 221, 原位等长)')
+    run(['python3', 'freetbl.py', 'names', 'apply'])
 
 def step_apply(only=None):
     """对 out/scripts_zh/ 里每个文件跑 apply_zh.mjs。
@@ -252,6 +272,7 @@ def main():
             step_d1_subfile_patch()    # D1: patch SLPS 描述符表
             step_d1_layout()           # D1: file 59 搬末尾 + 30-sector layout
             step_inject_font()         # 注入中文（含扩展 slot）
+            step_inject_font_f86()     # 同步到 file 86（命名界面等读的独立字库）
         else:                   print('\n[跳过] 字体注入')
         if not args.no_encode:
             step_encode_zh()
@@ -263,6 +284,10 @@ def main():
             step_apply_strtbl_slps()
             step_apply_savemenu()
             step_apply_mainmenu()
+            step_apply_nametable()
+            step_apply_contactui()
+            step_apply_config()
+            step_apply_names()
         elif args.no_strtbl:
             print('\n[跳过] strtbl apply（隔离测试）')
         step_summary()
