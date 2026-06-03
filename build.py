@@ -144,6 +144,10 @@ def step_apply_names():
     step('4i. 把角色名表写回 ISO (freetbl, 游离区 sector 221, 原位等长)')
     run(['python3', 'freetbl.py', 'names', 'apply'])
 
+def step_apply_maptbl():
+    step('4j. 把地图区域名写回 ISO (map 97-136 sub0 头部, 审定表 map_names_zh.json, 原位等长)')
+    run(['node', 'apply_maptbl.mjs'])
+
 def step_apply(only=None):
     """对 out/scripts_zh/ 里每个文件跑 apply_zh.mjs。
     only: set of file_id ints to filter, or None for all."""
@@ -284,10 +288,12 @@ def main():
             step_apply_strtbl_slps()
             step_apply_savemenu()
             step_apply_mainmenu()
-            step_apply_nametable()
-            step_apply_contactui()
-            step_apply_config()
-            step_apply_names()
+            if not os.environ.get('SKIP_NEW_TABLES'):   # 隔离测试: SKIP_NEW_TABLES=1 跳过 5/31 新表(nametable/contactui/config/names)
+                step_apply_nametable()
+                step_apply_contactui()
+                step_apply_config()
+                step_apply_names()
+                step_apply_maptbl()
         elif args.no_strtbl:
             print('\n[跳过] strtbl apply（隔离测试）')
         step_summary()

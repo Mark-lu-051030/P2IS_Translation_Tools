@@ -36,6 +36,15 @@ for fw, hw in FULLWIDTH_ALIASES.items():
     if hw in rev and fw not in rev:
         rev[fw] = rev[hw]
 
+# JP→CN 等价别名: 译文里字面的 JP 繁体/旧字体（時/長/間/東…）映射到其 CN 简体所在的槽。
+# inject_chinese_font.py 已把这些 JP 字的 og 槽强制渲染成 CN 简体；这里让 encode 也认得
+# 字面 JP 字（否则 codetable 里该槽已是 CN → rev 查不到 JP 字 → "找不到字符"）。
+# 效果：字段名(og码)与译文(字面JP)都落到同一个显示简体的槽，全简体且不改任何译文。
+if os.path.exists('jp_cn_equiv.json'):
+    for jp, cn in json.load(open('jp_cn_equiv.json', encoding='utf-8')).items():
+        if cn in rev and jp not in rev:
+            rev[jp] = rev[cn]
+
 # ── 标签解析: tag 字符串 → items 子列表 ──────────────────────
 TAG_SIMPLE = {
     'NAME':    [0x21],

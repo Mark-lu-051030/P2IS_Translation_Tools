@@ -120,6 +120,18 @@ def main():
             if isinstance(it, dict):
                 collect_chars(it.get('zh', '') or '')
         print(f'      + {fn}: 新增字频 {sum(freq.values()) - cnt0}')
+    # 地图区域名审定表（map_names_zh.json）：左上角字段名的中文字也必须有字形，
+    # 否则 apply_maptbl 写回时 rev[字] 查不到 → 缺字。
+    for mn_name in ('map_names_zh.json', 'room_names_zh.json'):
+        mn_path = os.path.join(ROOT, mn_name)
+        if not os.path.exists(mn_path):
+            continue
+        cnt0 = sum(freq.values())
+        for k, cn in json.load(open(mn_path, encoding='utf-8')).items():
+            if k.startswith('_'):
+                continue
+            collect_chars(cn or '')
+        print(f'      + {mn_name}: 新增字频 {sum(freq.values()) - cnt0}')
     # 按频率从高到低排序，频率相同按 unicode 顺序
     needed = sorted(freq.keys(), key=lambda c: (-freq[c], c))
     print(f'      需要 {len(needed)} 个汉字（按频率排序，高频在前）')
@@ -150,6 +162,35 @@ def main():
     for ch, slot in og_reused.items():
         assignments[ch] = slot
     ct_existing = {}  # 留个空对象给后面的打印用
+
+    # 优先级 2: 强制等价槽 — 让 og 日文 kanji 槽显示其【中文等价字】。
+    #   作用：漏翻的 og 汉字（地图区域/房间名等非对话文本、任何未覆盖文本）会渲染成
+    #   正确中文（姉→姐、園→园、場→场…），优雅降级，无需逐文件改。
+    #   ⚠ jp_cn_equiv.json 必须是正确的「JP新字体→CN简体」等价——错了会让别处用该
+    #   og 汉字的文本也跟着错。
+    forced = {}
+    forced_slots = {}   # slot → cn（CN 已有自己的槽时，在 JP 的 og 槽额外写一份 bitmap+codetable）
+    equiv_path = os.path.join(ROOT, 'jp_cn_equiv.json')
+    if os.path.exists(equiv_path):
+        equiv = json.load(open(equiv_path, encoding='utf-8'))
+        og_rev = {v: int(k) for k, v in ct_og.items() if isinstance(v, str) and len(v) == 1}
+        for jp, cn in equiv.items():
+            slot = og_rev.get(jp)
+            if slot is None:
+                continue
+            if slot in used_slots:
+                # 槽被 og_reused 占着 = jp 这个繁体字在译文里也用了。不跳过，强制覆盖成 cn：
+                # forced_slots 在 codetable + bitmap 两处都盖过 og_reused，最终该槽显示 cn。
+                # 译文里字面的 jp 由 encode_zh.py 的 equiv 别名映射到此槽 → 也显示 cn。
+                forced_slots[slot] = cn
+                continue
+            used_slots.add(slot)
+            if cn in assignments:
+                forced_slots[slot] = cn   # CN 是共用字(有自己的槽)，在 JP 的 og 槽再写一份
+            else:
+                assignments[cn] = slot    # CN 独占 JP 的 og 槽（priority-3 会跳过此槽）
+                forced[cn] = slot
+        print(f'      强制等价槽: {len(forced) + len(forced_slots)} 个 (og 日文kanji槽 → 中文等价字)')
 
     # 优先级 3: 新分配（按频率从高到低 — needed 已排好序）
     # D1 扩容后规则：
@@ -268,6 +309,12 @@ def main():
             continue
         decompressed[off:off + 18] = bmp
 
+    # 强制等价槽（CN 已有自己的槽）：在 JP 的 og 槽额外写一份它的 bitmap
+    for slot, cn in forced_slots.items():
+        off = 0x480 + slot * 18
+        if off + 18 <= len(decompressed):
+            decompressed[off:off + 18] = render_char(cn)
+
     # 6. 重压缩 sub-file 0
     print('[6/7] LZSS 重压缩...')
     recomp = bytearray(lzss_compress(bytes(decompressed), 12))
@@ -302,6 +349,8 @@ def main():
     new_ct = dict(ct_og)
     for ch, idx in assignments.items():
         new_ct[str(idx)] = ch
+    for slot, cn in forced_slots.items():   # 强制等价槽：JP 的 og 槽 → CN 字
+        new_ct[str(slot)] = cn
     with open(CODETABLE, 'w', encoding='utf-8') as f:
         json.dump(new_ct, f, ensure_ascii=False, separators=(',', ':'))
     print(f'      codetable.json 已更新（{len(new_ct)} 条 = og {len(ct_og)} + 新中文 {len(assignments)} - 覆盖）')
