@@ -263,7 +263,7 @@ SLPS sub-file 描述符表 @ RAM 0x80010070-0x8001007f (ISO sector 29 offset 0x7
 | 文件 | 作用 |
 |------|------|
 | `archive.mjs` | Archive 解包 / 打包 |
-| `lzss.mjs` | LZSS 压缩 / 解压 |
+| `lzss.mjs` | LZSS 压缩 / 解压。`compress`=贪心（日常够用）；`compress_optimal`=DP 全局最优解析（比原版游戏压缩器小 12~211 字节，紧实 archive 原位改写必用，token 格式不变） |
 | `rle.mjs` | RLE 压缩 / 解压。file 3/4 等剧情/战斗脚本用 RLE；`compress`（与 decompress token 格式对应）让 RLE 文件翻译后压回 RLE、保持 `byte[1]` subtype 不变——是觉醒/战斗白屏的修复关键 |
 | `cdimage.mjs` | ISO 扇区读写，管理 FILEPOS.DAT |
 | `msg_script.mjs` | 对话解析 / 编译（唯一可靠的对话工具） |
@@ -290,7 +290,8 @@ P2IS_Translation_Tools/
 
 | 文件 | 作用 | 状态 |
 |------|------|------|
-| **`build.py`** | **一键完整管道**：还原 ISO → D1（patch 描述符 + 搬 file 59 + 注字体 + 同步 file 86）→ 编码 zh/strtbl → apply（脚本按 file 分组 + strtbl + SLPS + savemenu + mainmenu + nametable + freetbl 三表）→ 修 ECC → 报告 | ⭐ 主入口 |
+| **`build.py`** | **一键完整管道**：还原 ISO → D1（patch 描述符 + 搬 file 59 + 注字体 + 同步 file 86）→ 编码 zh/strtbl → apply（脚本按 file 分组 + strtbl + SLPS + savemenu + mainmenu + nametable + freetbl 三表 + **maptbl 地图区域/房间名**）→ 修 ECC → 报告 | ⭐ 主入口 |
+| `apply_maptbl.mjs` | 翻译 map 97-136 sub0 头部的**区域名（左上角第一行）+ 房间名（第二行）**。原位等长替换 + `compress_optimal` 重压 + round-trip 校验。译表：`map_names_zh.json`（区域名审定）/ `strtbl 138_0_5`+`room_names_zh.json`（房间名） | ✅ |
 | `patch_subfile_table.py` | **D1 扩容 Step 1**：patch SLPS sub-file 描述符表（Desc1+Desc2 22→30 sectors） | ✅ |
 | `relocate_file59.py` | **D1 扩容 Step 2**：把 file 59 搬到 ISO 末尾 + sub-file 1 在 30 sectors offset；同时更新 FILEPOS.DAT 和 PVD | ✅ |
 | `inject_chinese_font.py` | **D1 字体注入**：读 working ISO file 59 → 扩 decompressed → inject 中文到 og kanji slot + 扩展 slot（从低位2575↑紧凑分配，避免覆盖 UI 数据）+ og 缺的假名 → LZSS 重压缩 → 修 ECC。除 all_translatable 外也扫 `out/*_zh.json`（各表用字）；用 `patch_subfile_table.set_subfile0_size` 按实际大小设动态 N | ✅ |
@@ -505,6 +506,7 @@ node verify_full.mjs
 | **MIPS unaligned access 在 Ghidra Decompile 里很乱** | `lwl/lwr` 配对在反编译里看着像奇怪的 bit-shift 写操作 | 切到 Listing 视图看实际指令；References 标记的 R/W 是可信的 |
 | **觉醒/战斗场景纯白屏（2026-06-01，调试最久）** | sub-file 头 `byte[1]` 是**场景脚本 subtype**（不是压缩类型）。apply 把 RLE 剧情/战斗脚本(file 3/4)重压成 LZSS 时强制 `r[1]=2`，改掉了 subtype → cutscene/战斗引擎据 byte[1] 走错处理 → 进场景 hang 纯白屏（debugger 无异常）。LZSS 文件本就 byte[1]=2 故无事，只有 RLE 文件中招 | `lib/rle.mjs` 实现 `compress`；apply 的 `compress_with_header` 对 `byte[1]==1` 的 sub 用 `rle.compress` 压回 RLE、保留原 byte[1]（不再强制 =2）。**铁证**：commit 53d3c1a(RLE 文件未翻=原版 RLE)正常 vs c408510(RLE 翻成 LZSS)白。⚠ 中途误判为"短译文 0x00 填充/改空格填充"，是弯路、已证伪 |
 | **worktree build 出来整个游戏是日文** | 新建的 git worktree 没有 conf.json，apply 找不到工作 ISO 路径写不进去；step_restore 又把 ISO 还原成 backup → 整盘日文 | 在 worktree 里 build 前先 `cp 主仓/conf.json`；或直接在主仓 build。诊断时务必先验证 working ISO 真翻译了（file 181/4 解压 ≠ backup）再下结论 |
+| **地图区域名原位改名重压"超容量"塞不回**（2026-06-03） | 不是名字变长——是 `lib/lzss.mjs` 贪心 `compress` 比原版游戏压缩器差 ~0.4%：原样不改重压就胀 +22~+78 字节。map 文件 5~6 sub 紧贴、文件尾 0 slack，胀 1 字节就溢出 | `lib/lzss.mjs` 加 `compress_optimal`（DP 全局最优解析），比原版小 12~211 字节 → 名字轻松塞回，不用搬文件。**先做无修改 round-trip 比原大小**就能区分"压缩器差"还是"数据变大" |
 
 ---
 
@@ -529,11 +531,15 @@ node verify_full.mjs
 - ✅ **游离区 UI/名表**（2026-05-31）：道具/Persona/技能/恶魔名主表（sector 200，`nametable_strtbl.py`，~1639条）、角色姓名/昵称（221）、交涉动作+战斗UI（271039）、设置菜单（271964）—— `freetbl.py` 通用游离区引擎（注册表驱动），原位等长替换不碰指针表；带参控制码条目整条 skip 防崩
 - ✅ **file 86 字体同步**（`inject_font_f86.py`）：命名界面等画面读的是 file 86（裸未压缩字库，非 file 59），把注入 file 59 的同批字形同步进去
 - ✅ **字体动态 N + 主菜单居中**：`patch_subfile_table.set_subfile0_size` 按实际重压缩大小设 SLPS Desc1（修 UI 精灵错乱）；`mainmenu_strtbl.py` 短菜单项前补全角空格居中
+- ✅ **左上角地点名（区域名+房间名）**（2026-06-03）：场景面板两行名字在 **map 文件 97-136 sub0 头部**（区域名=开头 og 码串；房间名=固定宽记录表 `[标志∅/」][名字][{1000}填充]`）。`apply_maptbl.mjs` 原位等长替换：区域名用人工审定表 `map_names_zh.json`（对齐对话正文 希巴尔巴/卡拉科尔，专名用户拍板），房间名取 `strtbl 138_0_5` 现成译法 + `room_names_zh.json` 覆盖个别超长（駐輪場→停车场、階段→楼梯）。边界规则（前∈{0,1} 后≥0x1000）防误伤瓦片数据；40 个图区域名 + 110 处房间名全写回
+- ✅ **最优 LZSS 压缩器**（2026-06-03）：`lib/lzss.mjs` 的 `compress_optimal`（DP 全局最优解析，token 格式不变游戏可解）。原贪心 `compress` 比原版游戏压缩器差 ~0.4%，导致紧实 archive（map 文件 5~6 sub 紧贴、0 slack）原位改名重压必膨胀 → 装不回。最优解析比原版**小 12~211 字节**，彻底拆掉压缩墙，且对话/字体链也受益（更多 headroom）。每个 map ~50-150ms，写回前强制 round-trip 校验防损坏
+- ✅ **字体槽等价兜底**（2026-06-03）：`jp_cn_equiv.json`（56 对 JP新字体→CN简体，如 姉→姐、駐→驻、階→阶）。`inject_chinese_font.py` 把这些 JP 字的 og 槽**强制渲染成 CN 简体字形**（即使该 JP 字在译文里也用了，无条件覆盖）；`encode_zh.py` 加等价别名让译文里字面的 JP 字编码到同一槽。作用：任何**漏翻的 og 汉字**（地图/未覆盖文本）优雅降级成可读简体，而非乱码
 
 **关于 "battle string"**：⚠️ **不存在独立的 battle string**。上游 `extract_battle_strings` 是失败的半成品（条件 `f[0]==8` 在真实文件零匹配，全 false）。所谓"战斗/剧情对话没翻"实际是 **RLE 压缩的 script 文件（file 3/4 等）被 apply_zh 的 bug 坑了**，已全部修复（最后一个坑是重压缩改了 byte[1] subtype 致白屏，2026-06-01 修，见"四、踩过的坑"）。
 
-**待解决（niche，v2）：**
-- ⚠️ **左上角地点名乱码**（2026-06-01 发现，未解决）：场景切换时左上角显示的地点名是乱码，疑似字符码/字库槽不匹配或读取路径未覆盖，待查
+**待解决（v2）：**
+- 🚧 **整片未提取的文件（场景文本）**（2026-06-03 发现）：主提取只覆盖脚本 file **3/4/90/178/181-577**，**file 5-89、91-180 整片没扫**。里面有**场景闲聊 NPC**（如"健康的な若者"在 file 46）、**道具箱/部分系统消息**（"〜手に入れた"模板）等字段文本 → 仍是日文。主线/事件对话已 100% 翻，这是下一阶段：扩展提取→翻译→应用这片文件
+- 🚧 **大地图地名标签**（如 スマル・プリズン）：138_0_5 已有译文（苏摩鲁监狱），但大地图读的是另一个源，待定位
 - ⚠️ **命名界面**：标签页(ひらがな/カタカナ/漢字)、DEL 是图片精灵（文本搜不到）；中间汉字大网格是输入字母表（不该翻）。少量代码 overlay 标签需 Ghidra
 - ⚠️ 个别超长对话保留原文（如 `90_126`，重压缩超 archive 槽容量，缩短译文可塞入）
 - ⚠️ 对话框三角 + L1/L2 图标 + HP/¥/TIME 颜色 — 非文字 UI 元素（cosmetic）
