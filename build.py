@@ -148,6 +148,15 @@ def step_apply_maptbl():
     step('4j. 把地图区域名写回 ISO (map 97-136 sub0 头部, 审定表 map_names_zh.json, 原位等长)')
     run(['node', 'apply_maptbl.mjs'])
 
+def step_apply_field():
+    if not os.path.exists(os.path.join(ROOT, 'out', 'field_text_zh.json')):
+        return   # 还没翻字段文本就跳过
+    if os.environ.get('SKIP_FIELD'):
+        print('\n[跳过] 字段文本回插 (SKIP_FIELD=1, 仅注字段字体不 apply, 用于二分定位)')
+        return
+    step('4k. 把字段文本译文写回 ISO (场景对话/装备说明等, apply_field 原位等长, 含 file>881)')
+    run(['node', 'apply_field.mjs', 'apply'])
+
 def step_apply(only=None):
     """对 out/scripts_zh/ 里每个文件跑 apply_zh.mjs。
     only: set of file_id ints to filter, or None for all."""
@@ -294,6 +303,7 @@ def main():
                 step_apply_config()
                 step_apply_names()
                 step_apply_maptbl()
+                step_apply_field()
         elif args.no_strtbl:
             print('\n[跳过] strtbl apply（隔离测试）')
         step_summary()

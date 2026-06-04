@@ -18,7 +18,7 @@ ISO = '/home/mark/Code/RomHacking/Game/P2IS_PSX/ogd/Persona 2 - Tsumi - Innocent
 BAK = '/home/mark/Code/RomHacking/Game/P2IS_PSX/ogd/Persona 2 - Tsumi - Innocent Sin (Japan) - 副本.bin'
 FIX_ECC = os.path.join(ROOT, 'fix_ecc.py')
 
-TARGET_SUB1_OFFSET = 30 * 2048   # 61440 bytes
+TARGET_SUB1_OFFSET = 32 * 2048   # 65536 bytes (30→32 扩容, 字段文本字多)
 
 def create_valid_ps1_sector(lba):
     abs_sect = lba + 150

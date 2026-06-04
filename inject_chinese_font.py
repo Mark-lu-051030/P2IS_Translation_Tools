@@ -25,7 +25,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 from pylib.p2is import (
     read_sectors, write_sectors,
-    lzss_decompress, lzss_compress,
+    lzss_decompress, lzss_compress, lzss_compress_optimal,
     archive_subfile_offsets,
     read_filepos, get_file_entry,
 )
@@ -47,8 +47,8 @@ FONT_SUB   = 0          # sub-file 0 = LZSS 压缩的字形数据
 # 这里 inject 时可以用扩展 slot 3576+（原来空区）
 ALLOC_TOP    = 3800     # D1 扩容后可达 (sub-file 0 解压上限 ~69000, (69000-0x480)/18=3825)
 ALLOC_BOTTOM = 100      # 不低于这里（保护常用标点和 UI 字符）
-EXPANDED_DECOMP_SIZE = 65520   # D1 字库 RAM 区上限（实测临界值）
-SUBFILE_1_OFFSET = 30 * 2048    # D1 layout: sub-file 1 在 30 sectors offset
+EXPANDED_DECOMP_SIZE = 65520   # D1 字库 RAM 区上限（实测临界值；decompressed/RAM 不动, 超 3575 槽的极罕用字丢弃）
+SUBFILE_1_OFFSET = 32 * 2048    # D1 layout: sub-file 1 在 32 sectors offset (30→32 扩容压缩空间, 字段文本字多)
 
 # SECTOR/BLOCK 常量、扇区 IO、LZSS、archive 解析 都从 pylib.p2is 引入
 from pylib.p2is import SECTOR, BLOCK_OFF, BLOCK_SIZE
@@ -132,6 +132,14 @@ def main():
                 continue
             collect_chars(cn or '')
         print(f'      + {mn_name}: 新增字频 {sum(freq.values()) - cnt0}')
+    # 字段文本译文（场景对话/装备说明等，out/field_text_zh.json）的中文字也必须注入字形
+    ft_path = os.path.join(ROOT, 'out', 'field_text_zh.json')
+    if os.path.exists(ft_path):
+        cnt0 = sum(freq.values())
+        for it in json.load(open(ft_path, encoding='utf-8')):
+            if isinstance(it, dict):
+                collect_chars(it.get('zh', '') or '')
+        print(f'      + field_text_zh.json: 新增字频 {sum(freq.values()) - cnt0}')
     # 按频率从高到低排序，频率相同按 unicode 顺序
     needed = sorted(freq.keys(), key=lambda c: (-freq[c], c))
     print(f'      需要 {len(needed)} 个汉字（按频率排序，高频在前）')
@@ -317,7 +325,7 @@ def main():
 
     # 6. 重压缩 sub-file 0
     print('[6/7] LZSS 重压缩...')
-    recomp = bytearray(lzss_compress(bytes(decompressed), 12))
+    recomp = bytearray(lzss_compress_optimal(bytes(decompressed), 12))   # 最优解析,比贪心省~1%挤进30sectors
     recomp[0:4] = tag_bytes  # 保留原始 tag（关键！否则游戏崩溃）
     struct.pack_into('<I', recomp, 4, len(recomp))
     struct.pack_into('<I', recomp, 8, len(decompressed))

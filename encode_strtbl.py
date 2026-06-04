@@ -63,9 +63,16 @@ for fname in sorted(os.listdir(SRC_DIR)):
             zh = trans_map[key]
             # 编码 zh 文本成 items（复用 encode_page，包含 tag 解析）
             new_items = encode_page(zh)
-            # 末尾加 [1] (CMD_NEWLINE) + [3] (CMD_RET) — 跟原版每个 string 一致
-            new_items.append([1])
-            new_items.append([3])
+            # 保留原 entry 的尾部结构终止符（[6]=WAIT 等待输入 / [2]=END_PAGE / [3]=RET / [1]=换行），
+            # ⚠ 别硬加 [1][3]：原版谣言描述等结尾是 [6][2][3]，丢了 [6] → 框不等输入自动翻过 → 闪一下消失。
+            # 只取末尾连续的"结构控制码"(cmd∈{1,2,3,6})，颜色码[29,N]等内容由译文自带、不动。
+            term = []
+            j = len(orig_items) - 1
+            while j >= 0 and isinstance(orig_items[j], list) and orig_items[j][0] in (1, 2, 3, 6):
+                term.insert(0, orig_items[j]); j -= 1
+            if not term:
+                term = [[3]]   # 兜底：至少要有 RET
+            new_items.extend(term)
             new_strings.append(new_items)
             total_translated += 1
             changed = True

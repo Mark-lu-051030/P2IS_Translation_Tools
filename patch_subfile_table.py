@@ -41,12 +41,12 @@ SECTOR = 29
 # Desc 1: sub-file 0 size 字段 在 offset 0x74-0x77 (LE word = 0x00010016)
 DESC1_OFFSET = 0x74
 OLD_DESC1 = b'\x16\x00\x01\x00'   # sub-file 0 size = 22 sectors
-NEW_DESC1 = b'\x1e\x00\x01\x00'   # sub-file 0 size = 30 sectors
+NEW_DESC1 = b'\x20\x00\x01\x00'   # sub-file 0 size = 32 sectors (字段文本字多, 30→32 扩容; 实际由 set_subfile0_size 动态精确设)
 
 # Desc 2: sub-file 1 offset 字段 在 offset 0x78-0x7b (LE word = 0x00160000)
 DESC2_OFFSET = 0x78
 OLD_DESC2 = b'\x00\x00\x16\x00'   # sub-file 1 offset = 22 sectors
-NEW_DESC2 = b'\x00\x00\x1e\x00'   # sub-file 1 offset = 30 sectors
+NEW_DESC2 = b'\x00\x00\x20\x00'   # sub-file 1 offset = 32 sectors
 
 def set_subfile0_size(iso_path, n_sectors, fix_ecc=True):
     """动态 N 根治：把 Desc1 的 sub-file 0 size 字段设为 n_sectors（= CD 读扇区数）。

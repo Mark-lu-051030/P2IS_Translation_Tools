@@ -28,11 +28,12 @@ function items_to_bytes(items) {
     for (const item of items) {
         if (Array.isArray(item)) {
             // 控制码：[cmd] 或 [cmd, arg, arg, ...]
-            // cmd byte = 0x11, val byte = cmd value
-            // 例如 [1] → 0x1101 → bytes 01 11
-            // 例如 [8, 2] → 0x1108 + arg 0x0002 → bytes 08 11 02 00
+            // 编码 = 0x1000 | (词数<<8) | cmd，len nibble = 总 uint16 词数(cmd + 参数个数)。
+            // ⚠ 原来写 0x1100|cmd 是 bug：len nibble 恒=1(表示0参)，但带参命令后面又跟了 arg，
+            //   游戏读完命令把 arg 当成字符 → 带参控制码的 strtbl(如谣言描述<c1d:N/>)错乱/闪一下消失。
+            // 例: [1]→0x1101(0参) / [0x1d,11]→0x121d+000b(1参) / [5,0]→0x1205+0000(1参)。
             const cmd = item[0];
-            const val = 0x1100 | cmd;
+            const val = 0x1000 | ((item.length & 0xf) << 8) | (cmd & 0xff);
             out.push(val & 0xff, (val >> 8) & 0xff);
             for (let i = 1; i < item.length; i++) {
                 const arg = item[i];
