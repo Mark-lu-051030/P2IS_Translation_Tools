@@ -109,6 +109,62 @@ def _find_backref(data, iptr, n):
     return best_off, best_len
 
 
+def lzss_compress_optimal(data, header_len):
+    """LZSS 最优解析(DP)压缩。token 格式与 lzss_compress/解压完全一致，但用动态规划求
+    全局最小字节数(比贪心省 ~1%)。字体重压缩贴近 30-sector 上限时用它挤进去。
+    代价：literal run k(1..128)=1+k 字节；backref L(3..130)=2 字节。边界 offset∈[1,256]、source≥0。"""
+    data = bytes(data)
+    n = len(data)
+    INF = float('inf')
+    cost = [0.0] * (n + 1)
+    ch_len = [0] * (n + 1)   # >0=backref 长度; <0=literal run 长度(取负)
+    ch_off = [0] * (n + 1)
+    for i in range(n - 1, -1, -1):
+        best = INF; bl = 0; bo = 0
+        maxlen = 130 if n - i > 130 else n - i
+        lmax = 0; lmax_off = 0
+        if maxlen >= 3:
+            lo = i - 256
+            if lo < 0:
+                lo = 0
+            ci = data[i]
+            for s in range(i - 1, lo - 1, -1):
+                if data[s] != ci:
+                    continue
+                l = 1
+                while l < maxlen and data[s + l] == data[i + l]:
+                    l += 1
+                if l > lmax:
+                    lmax = l; lmax_off = i - s
+                    if l == maxlen:
+                        break
+        if lmax >= 3:
+            for L in range(3, lmax + 1):
+                c = 2 + cost[i + L]
+                if c < best:
+                    best = c; bl = L; bo = lmax_off
+        kmax = 128 if n - i > 128 else n - i
+        for k in range(1, kmax + 1):
+            c = 1 + k + cost[i + k]
+            if c < best:
+                best = c; bl = -k; bo = 0
+        cost[i] = best; ch_len[i] = bl; ch_off[i] = bo
+    out = bytearray(header_len)
+    i = 0
+    while i < n:
+        L = ch_len[i]
+        if L < 0:
+            k = -L
+            out.append(k - 1)
+            out += data[i:i + k]
+            i += k
+        else:
+            out.append(((L - 3) | 0x80) & 0xff)
+            out.append((ch_off[i] - 1) & 0xff)
+            i += L
+    return bytes(out)
+
+
 def lzss_compress(data, header_len):
     """LZSS 压缩。前 `header_len` 字节保留给调用方写头部（tag, sizes）。"""
     n = len(data)

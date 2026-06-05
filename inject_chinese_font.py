@@ -89,37 +89,48 @@ def main():
     # og 已有的字符集合（用于判断假名是否需要 inject）
     _ct_og_early = json.load(open(CODETABLE_OG, encoding='utf-8'))
     _og_chars = set(v for v in _ct_og_early.values() if isinstance(v, str) and len(v) == 1)
-    def collect_chars(text):
+    def collect_chars(text, w=1):
         clean = re.sub(r'<[^>]+/?>', '', text)
         for c in clean:
             if '一' <= c <= '鿿' or '㐀' <= c <= '䶿':
-                freq[c] += 1
+                freq[c] += w
             # 假名/特殊字符：只在 og 字库没有时才 inject（如 が ヘ ホ ョ 这类 og 缺的）
             elif ('぀' <= c <= 'ヿ') and c not in _og_chars:
-                freq[c] += 1
+                freq[c] += w
     for entry in data:
         for page in entry.get('pages', []):
             collect_chars(page.get('zh', '') or '')
         collect_chars(entry.get('meta_zh', '') or '')
     # 同时收集菜单/名表 json 的 zh（这些表译文不在 all_translatable.json，
     # 但游戏里要显示中文，字形必须也注入 → 否则缺字形）
-    """extra_jsons = ['nametable_zh.json', 'savemenu_zh.json', 'mainmenu_zh.json',
-                   'config_zh.json', 'naming_zh.json', 'contactui_zh.json',
-                   'names_zh.json']"""
-    extra_jsons = []
+    # 名表/UI 表的 zh（道具/武器/Persona/技能/恶魔/角色名 + 菜单）——这些一直在菜单可见，
+    # 字形必须保证注入；用大权重提权，确保不被"只出现一两次的罕用对话字"挤出字库容量。
+    # （之前空着 → 名表生僻字 菊柳雁瑙镯… 缺字, 武器/道具名半中半日。）
+    def walk_zh(obj):
+        if isinstance(obj, str):
+            yield obj
+        elif isinstance(obj, dict):
+            for k, v in obj.items():
+                if k == 'jp':   # 跳过 jp(都是 og 字, 无需提权)
+                    continue
+                yield from walk_zh(v)
+        elif isinstance(obj, list):
+            for v in obj:
+                yield from walk_zh(v)
+    NAME_BOOST = 100000
+    extra_jsons = ['nametable_zh.json', 'names_zh.json', 'mainmenu_zh.json',
+                   'config_zh.json', 'contactui_zh.json', 'savemenu_zh.json']
     for fn in extra_jsons:
         p = os.path.join(ROOT, 'out', fn)
         if not os.path.exists(p):
             continue
         try:
-            items = json.load(open(p, encoding='utf-8'))
+            data = json.load(open(p, encoding='utf-8'))
         except Exception:
             continue
-        cnt0 = sum(freq.values())
-        for it in (items if isinstance(items, list) else []):
-            if isinstance(it, dict):
-                collect_chars(it.get('zh', '') or '')
-        print(f'      + {fn}: 新增字频 {sum(freq.values()) - cnt0}')
+        for s in walk_zh(data):
+            collect_chars(s, NAME_BOOST)
+        print(f'      + {fn}: 名表/UI 字已提权注入')
     # 地图区域名审定表（map_names_zh.json）：左上角字段名的中文字也必须有字形，
     # 否则 apply_maptbl 写回时 rev[字] 查不到 → 缺字。
     for mn_name in ('map_names_zh.json', 'room_names_zh.json'):

@@ -5,6 +5,8 @@
 // 用法:
 //   node apply_field.mjs verify [fileId]   # 校验某文件(默认全部 field_text 涉及的文件)的 jp round-trip
 import fs from "fs";
+import * as lzss from "./lib/lzss.mjs";
+import * as rle from "./lib/rle.mjs";
 
 const SECTOR = 0x930, BO = 24, BS = 2048;
 const BACKUP = "/home/mark/Code/RomHacking/Game/P2IS_PSX/ogd/Persona 2 - Tsumi - Innocent Sin (Japan) - 副本.bin";
@@ -30,17 +32,24 @@ function encodeText(s, charToCode) {
   const codes = []; let ok = true; let i = 0; let miss = null;
   while (i < s.length) {
     if (s[i] === "<") {
-      const j = s.indexOf(">", i); if (j < 0) { ok = false; break; }
-      let tag = s.slice(i + 1, j); i = j + 1;
-      if (tag.endsWith("/")) tag = tag.slice(0, -1);
+      const j = s.indexOf(">", i);
+      let tag = j >= 0 ? s.slice(i + 1, j) : null;
+      if (tag && tag.endsWith("/")) tag = tag.slice(0, -1);
       // 形如 c5:0,0 或 c6
-      const m = tag.match(/^c([0-9a-f]+)(?::(.*))?$/);
-      if (!m) { ok = false; continue; }
-      const cmd = parseInt(m[1], 16);
-      const args = m[2] ? m[2].split(",").map(x => parseInt(x, 10)) : [];
-      const len = 1 + args.length;
-      codes.push(0x1000 | (len << 8) | cmd);
-      for (const a of args) codes.push(a & 0xffff);
+      const m = tag ? tag.match(/^c([0-9a-f]+)(?::(.*))?$/) : null;
+      if (m) {
+        const cmd = parseInt(m[1], 16);
+        const args = m[2] ? m[2].split(",").map(x => parseInt(x, 10)) : [];
+        const len = 1 + args.length;
+        codes.push(0x1000 | (len << 8) | cmd);
+        for (const a of args) codes.push(a & 0xffff);
+        i = j + 1;
+      } else {
+        // 不是合法 cXX 控制码标签(如变量占位符 <舞耶>/<前>) → 把 '<' 当普通字符编码
+        const c = charToCode["<"];
+        if (c === undefined) { ok = false; if (!miss) miss = "<"; codes.push(0); } else codes.push(c);
+        i += 1;
+      }
     } else if (s[i] === "\\" && s[i + 1] === "n") {
       codes.push(0x1101); i += 2;               // 字面 \n（jp 来源）
     } else if (s[i] === "\n") {
@@ -54,6 +63,11 @@ function encodeText(s, charToCode) {
   return { codes, ok, miss };
 }
 
+// 标签守恒比对用的归一化 key：剔除装饰性版面码 <c20/>（分句/缩进标记, DeepSeek 重组句子时
+// 常丢 1 个; 丢了只是版面略变, 显示中文远好过整条退回日文）。其余结构码(c1d/c1e/c5/c6/c2/ce…)仍严格。
+const COSMETIC_TAGS = new Set(["<c20/>"]);
+const tagKey = (s) => (s.match(/<[^>]+>/g) || []).filter(t => !COSMETIC_TAGS.has(t)).sort().join();
+
 // 算一条对话的字节结束位置（与提取器同逻辑：遇 RET 0x1103 结束）
 function dialogEnd(d, off) {
   let q = off;
@@ -64,6 +78,92 @@ function dialogEnd(d, off) {
     return -1;
   }
   return -1;
+}
+
+// 检测字符串表文件：[count u32][count×u32 指针][字符串区]，首指针 == count*4+4。
+function isStringTable(d) {
+  if (d.length < 12) return false;
+  const count = d.readUInt32LE(0);
+  if (count < 2 || count > 100000 || count * 4 + 8 > d.length) return false;
+  if (d.readUInt32LE(4) !== count * 4 + 4) return false;   // 首指针紧接指针表后
+  const lo = count * 4 + 4;
+  for (let i = 0; i < count; i++) {
+    const p = d.readUInt32LE(4 + i * 4);
+    if (p < lo || p > d.length) return false;               // 指针须落在字符串区内(允许 dedup 重复/回指)
+  }
+  return true;
+}
+
+// 解码 d 在 off 处的字符串为 jp 文本(与 extract_field_text 的 render 完全一致, 遇 RET 停)。
+// 用于按"内容"匹配译文(offset 因对齐对不齐, 不可靠)。
+function renderAt(d, off) {
+  let s = "", q = off;
+  while (q + 1 < d.length) {
+    const c = d.readUInt16LE(q); q += 2; const t = (c >> 12) & 0xf;
+    if (t === 0) { s += ogc[String(c)] || `{${c.toString(16)}}`; continue; }
+    if (t === 1) {
+      const cmd = c & 0xff, len = (c >> 8) & 0xf, args = [];
+      for (let k = 1; k < len; k++) { args.push(d.readUInt16LE(q)); q += 2; }
+      if (cmd === 1) s += "\\n";
+      else if (cmd === 3) return s;                 // RET 结束
+      else s += `<c${cmd.toString(16)}${args.length ? ":" + args.join(",") : ""}/>`;
+      continue;
+    }
+    return s;
+  }
+  return s;
+}
+
+// 重建字符串表（不缩短）：解析 count+指针，每条按 jp 内容查 zh、重新编码(变长)，更新指针，整表装回原区域。
+// 中文整体更短 → 装得下。entries: [{jp,zh}]。原地改 d。返回 {ok, wrote, kept, total, regionEnd}。
+function rebuildTable(d, entries, encodeFn) {
+  const jpToZh = new Map();
+  for (const e of entries) if (e.zh && e.zh.trim()) jpToZh.set(e.jp, e.zh);
+  const count = d.readUInt32LE(0);
+  const ptrTableEnd = count * 4 + 4;
+  const ptrs = [];
+  for (let i = 0; i < count; i++) ptrs.push(d.readUInt32LE(4 + i * 4));
+  const uniq = [...new Set(ptrs)].sort((a, b) => a - b);
+  // regionEnd = 最后一条字符串的结束(扫到 RET)
+  const lastP = uniq[uniq.length - 1];
+  let regionEnd = d.length;
+  for (let q = lastP; q + 1 < d.length; q += 2) { if (d.readUInt16LE(q) === 0x1103) { regionEnd = q + 2; break; } if (q - lastP > 8000) break; }
+  // 每个 unique 指针的原始字节 [p, 下一个unique指针 或 regionEnd)
+  const origBytes = new Map();
+  for (let j = 0; j < uniq.length; j++) {
+    const p = uniq[j], e = (j + 1 < uniq.length) ? uniq[j + 1] : regionEnd;
+    origBytes.set(p, Buffer.from(d.subarray(p, e)));   // 拷贝(防 nt.copy(d) 后别名失效)
+  }
+  // 每个 unique 指针的新字节：能译则 zh 编码+RET，否则保留原字节
+  let wrote = 0, kept = 0;
+  const newBytes = new Map();
+  for (const p of uniq) {
+    const jp = renderAt(d, p);                 // 按内容匹配(避开 offset 对齐问题)
+    const zh = jpToZh.get(jp);
+    let bytes = null;
+    if (zh) {
+      const { codes, ok } = encodeFn(zh, rev);
+      if (ok && tagKey(jp) === tagKey(zh)) {
+        const buf = Buffer.alloc(codes.length * 2 + 2);
+        for (let k = 0; k < codes.length; k++) buf.writeUInt16LE(codes[k], k * 2);
+        buf.writeUInt16LE(0x1103, codes.length * 2);
+        bytes = buf; wrote++;
+      }
+    }
+    if (!bytes) { bytes = origBytes.get(p); kept++; }
+    newBytes.set(p, bytes);
+  }
+  // 组装：指针表后顺序排新字符串
+  const newOff = new Map();
+  let cur = ptrTableEnd;
+  for (const p of uniq) { newOff.set(p, cur); cur += newBytes.get(p).length; }
+  if (cur > regionEnd) return { ok: false };                // 装不下(罕见) → 放弃重建此表
+  const nt = Buffer.alloc(regionEnd);
+  nt.writeUInt32LE(count, 0);
+  for (let i = 0; i < count; i++) nt.writeUInt32LE(newOff.get(ptrs[i]), 4 + i * 4);
+  for (const p of uniq) newBytes.get(p).copy(nt, newOff.get(p));
+  nt.copy(d, 0);                                            // 覆写 [0, regionEnd)，其余保留
+  return { ok: true, wrote, kept, total: cur, regionEnd };
 }
 
 function verify(fileFilter) {
@@ -137,7 +237,9 @@ try {
 } catch { }
 const FW = rev["　"] ?? rev[" "];
 
-function apply(dry, fileFilter) {
+function apply(dry, fileFilter, dump) {
+  const toolong = [];   // dump 模式：收集"太长"条目供重译更短
+  const tagmiss = [], misschar = [];   // dump 模式：收集"标签不符""缺字"条目供排查
   // strtbl 表区域：这些 offset 由 apply_strtbl 重建索引表+字符串处理。字段提取误把其中的
   // strtbl 串也提了；apply_field 若再写会和 apply_strtbl 的重建冲突 → 指针表写烂 → 越界崩。
   // 故跳过落在任何 strtbl 表 [offset, offset+max_len) 内的字段条目。
@@ -178,25 +280,44 @@ function apply(dry, fileFilter) {
     const d = rfile(id, wfd || fd); if (!d) continue;       // apply 从 WORK 读(保留之前的apply); dry 从 backup
     const blk = o.readUInt32LE(id * 8), sz = o.readUInt32LE(id * 8 + 4);
     let wrote = 0, skip = 0;
-    for (const { off, jp, zh: zhtext } of byFile[id]) {
-      const end = dialogEnd(d, off); if (end < 0) { totNoRet++; skip++; continue; }
-      const spanCodes = (end - off) / 2;                   // 含结尾 RET
-      // 标签守恒检查
-      const jpTags = (jp.match(/<[^>]+>/g) || []).sort().join();
-      const zhTags = (zhtext.match(/<[^>]+>/g) || []).sort().join();
-      if (jpTags !== zhTags) { totTag++; skip++; continue; }
-      const { codes, ok, miss } = encodeText(zhtext, rev);
-      if (!ok) { totEnc++; if (miss) encMiss[miss] = (encMiss[miss] || 0) + 1; skip++; continue; }
-      if (codes.length + 1 > spanCodes) { totTooLong++; skip++; continue; }   // 放不下(+1=RET)
-      // 写：zh codes + 全角空格补齐 + RET，总长 = spanCodes
-      for (let k = 0; k < codes.length; k++) d.writeUInt16LE(codes[k], off + k * 2);
-      let p = off + codes.length * 2;
-      for (let k = codes.length; k < spanCodes - 1; k++) { d.writeUInt16LE(FW, p); p += 2; }
-      d.writeUInt16LE(0x1103, p);
-      wrote++;
+    // 仅对"未注册 strtbl 的字符串表文件"(如 1103/1106/1102, >881)重建——apply_strtbl 够不到;
+    // 已注册的(64-72 等)由 apply_strtbl 处理, apply_field 不碰(防冲突)。按 jp 内容匹配译文。
+    const isTable = isStringTable(d) && !strtblRegions[id];
+    if (isTable) {
+      // 字符串表文件 → 重建(变长,不缩短,不会太长)。dry/dump 不重建(表文件无"太长")。
+      if (!dry) {
+        const r = rebuildTable(d, byFile[id], encodeText);
+        if (r.ok) { wrote = r.wrote; console.log(`file ${id}: [字符串表重建] 写 ${r.wrote} / 保留 ${r.kept} (${r.total}/${r.regionEnd}B)`); }
+        else console.log(`file ${id}: [字符串表重建] 装不下→跳过(未改)`);
+      } else {
+        console.log(`file ${id}: [字符串表] ${byFile[id].length} 条 → apply 时重建(无太长)`);
+      }
+    } else {
+      for (const { off, jp, zh: zhtext } of byFile[id]) {
+        const end = dialogEnd(d, off); if (end < 0) { totNoRet++; skip++; continue; }
+        const spanCodes = (end - off) / 2;                   // 含结尾 RET
+        // 标签守恒检查(忽略装饰码 <c20/>)
+        if (tagKey(jp) !== tagKey(zhtext)) { totTag++; skip++; if (dump) tagmiss.push({ id: `field:${id}:0x${off.toString(16)}`, jp, zh: zhtext }); continue; }
+        const { codes, ok, miss } = encodeText(zhtext, rev);
+        if (!ok) { totEnc++; if (miss) encMiss[miss] = (encMiss[miss] || 0) + 1; skip++; if (dump) misschar.push({ id: `field:${id}:0x${off.toString(16)}`, jp, zh: zhtext, miss }); continue; }
+        if (codes.length + 1 > spanCodes) {
+          totTooLong++; skip++;
+          if (dump) {   // 导出供重译更短：budget = jp 可见字符数(去标签/换行), zh 须 ≤ 此数
+            const vis = jp.replace(/<[^>]*>/g, "").replace(/\\n/g, "").length;
+            toolong.push({ id: `field:${id}:0x${off.toString(16)}`, jp, oldzh: zhtext, budget: vis });
+          }
+          continue;
+        }
+        // 写：zh codes + RET(紧跟,避免逐字"打字"渲染 padding 卡住) + 余下填充(RET 后不会被读)
+        for (let k = 0; k < codes.length; k++) d.writeUInt16LE(codes[k], off + k * 2);
+        let p = off + codes.length * 2;
+        d.writeUInt16LE(0x1103, p); p += 2;
+        for (let k = codes.length + 1; k < spanCodes; k++) { d.writeUInt16LE(FW, p); p += 2; }
+        wrote++;
+      }
+      console.log(`file ${id}: 写 ${wrote} / 跳过 ${skip} (共 ${byFile[id].length})`);
     }
     totWrote += wrote; totSkip += skip;
-    console.log(`file ${id}: 写 ${wrote} / 跳过 ${skip} (共 ${byFile[id].length})`);
     if (!dry && wrote) {
       // 写整个文件 buffer 回 ISO 扇区（同大小，FILEPOS 不变）
       let wo = 0, wsec = blk * SECTOR;
@@ -205,10 +326,91 @@ function apply(dry, fileFilter) {
       eccRanges.push([blk, blk + nSec - 1]);
     }
   }
+  // ── 归档子文件(压缩)字段文本回插 ──────────────────────────────
+  // id 形如 field:FILE_SId:0xOFF。FILE=多子文件归档(1112-1117/77 等), SI=enumSubs 序号,
+  // OFF=该 sub 解压后 buffer 内偏移。逐 sub: 解压→原位等长改→重压缩(保留头tag)→塞回原 sub 槽
+  // (≤槽则写+槽内补零, 否则跳过保原)。sub 偏移不动(多为扇区对齐), 文件总大小不变, FILEPOS 不变。
+  const arcByFile = {};
+  for (const e of zh) {
+    if (!e.zh || !e.zh.trim()) continue;
+    const m = e.id.match(/^field:(\d+)_(\d+)d:0x([0-9a-f]+)$/);
+    if (!m) continue;
+    const id = parseInt(m[1]), si = parseInt(m[2], 10), off = parseInt(m[3], 16);
+    if (fileFilter && !fileFilter(id)) continue;
+    if (isStructural(e.jp)) continue;
+    const f = (arcByFile[id] = arcByFile[id] || {});
+    (f[si] = f[si] || []).push({ off, jp: e.jp, zh: e.zh });
+  }
+  for (const id of Object.keys(arcByFile).map(Number).sort((a, b) => a - b)) {
+    const arch = rfile(id, wfd || fd); if (!arch) continue;
+    const blk = o.readUInt32LE(id * 8), sz = o.readUInt32LE(id * 8 + 4);
+    // enumSubs(带偏移): 与 extract_field_text 同逻辑
+    const subs = []; let ptr = 0;
+    while (ptr + 12 <= arch.length && subs.length < 300) {
+      const t = arch[ptr];
+      if (t === 0) { if (arch.readUInt32LE(ptr) !== 0) break; ptr = (ptr & 0x7ff) ? ((ptr + 0x800) & ~0x7ff) : ptr + 0x800; continue; }
+      if (t > 3) break;
+      const len = arch.readUInt32LE(ptr + 4); if (len < 12 || ptr + len > arch.length) break;
+      subs.push({ off: ptr, len }); ptr += len; while (ptr & 3) ptr++;
+    }
+    let fileWrote = 0;
+    for (const si of Object.keys(arcByFile[id]).map(Number).sort((a, b) => a - b)) {
+      const sub = subs[si]; if (!sub) continue;
+      const type = arch[sub.off + 1], tc = arch.readUInt32LE(sub.off + 4), uc = arch.readUInt32LE(sub.off + 8);
+      if (!((type === 1 || type === 2) && uc > 0 && uc < 0x40000 && tc > 12 && tc <= sub.len && (tc - 12) <= uc * 2)) continue;
+      let dc; try { dc = (type === 1) ? rle.decompress(arch, sub.off + 12, tc - 12, uc) : lzss.decompress(arch, sub.off + 12, tc - 12, uc); } catch { continue; }
+      if (!dc || dc.length !== uc) continue;
+      dc = Buffer.from(dc);
+      let subWrote = 0;
+      for (const { off, jp, zh: zhtext } of arcByFile[id][si]) {
+        const end = dialogEnd(dc, off); if (end < 0) { totNoRet++; totSkip++; continue; }
+        const spanCodes = (end - off) / 2;
+        if (tagKey(jp) !== tagKey(zhtext)) { totTag++; totSkip++; if (dump) tagmiss.push({ id: `field:${id}_${si}d:0x${off.toString(16)}`, jp, zh: zhtext }); continue; }
+        const { codes, ok, miss } = encodeText(zhtext, rev);
+        if (!ok) { totEnc++; if (miss) encMiss[miss] = (encMiss[miss] || 0) + 1; totSkip++; if (dump) misschar.push({ id: `field:${id}_${si}d:0x${off.toString(16)}`, jp, zh: zhtext, miss }); continue; }
+        if (codes.length + 1 > spanCodes) {
+          totTooLong++; totSkip++;
+          if (dump) { const vis = jp.replace(/<[^>]*>/g, "").replace(/\\n/g, "").length; toolong.push({ id: `field:${id}_${si}d:0x${off.toString(16)}`, jp, oldzh: zhtext, budget: vis }); }
+          continue;
+        }
+        for (let k = 0; k < codes.length; k++) dc.writeUInt16LE(codes[k], off + k * 2);
+        let p = off + codes.length * 2;
+        dc.writeUInt16LE(0x1103, p); p += 2;
+        for (let k = codes.length + 1; k < spanCodes; k++) { dc.writeUInt16LE(FW, p); p += 2; }
+        subWrote++;
+      }
+      if (dry || !subWrote) continue;
+      // 重压缩 + 保留头 tag(byte0-3) + 更新 tc/uc
+      let recomp;
+      try { recomp = (type === 2) ? lzss.compress_optimal(dc, 12) : rle.compress(dc, 12); } catch { console.log(`file ${id}_${si}d 重压缩失败,跳过保原`); continue; }
+      arch.copy(recomp, 0, sub.off, sub.off + 4);
+      recomp.writeUInt32LE(recomp.length, 4); recomp.writeUInt32LE(dc.length, 8);
+      const nextOff = (si + 1 < subs.length) ? subs[si + 1].off : sz;
+      const slot = nextOff - sub.off;
+      if (recomp.length > slot) { console.log(`file ${id}_${si}d 重压(${recomp.length})>原槽(${slot}),跳过保原`); continue; }
+      recomp.copy(arch, sub.off);
+      for (let z = sub.off + recomp.length; z < nextOff; z++) arch[z] = 0;   // 槽内余下补零
+      fileWrote += subWrote;
+      console.log(`file ${id}_${si}d: [归档sub重压] 写 ${subWrote} (压 ${recomp.length}/槽 ${slot})`);
+    }
+    totWrote += fileWrote;
+    if (!dry && fileWrote) {
+      let wo = 0, wsec = blk * SECTOR;
+      while (wo < sz) { const c = Math.min(BS, sz - wo); fs.writeSync(wfd, arch, wo, c, wsec + BO); wo += c; wsec += SECTOR; }
+      const nSec = Math.ceil(sz / BS); eccRanges.push([blk, blk + nSec - 1]);
+    }
+  }
+
   if (wfd) fs.closeSync(wfd);
   console.log(`\n总: 写回 ${totWrote}, 跳过 ${totSkip} (无RET ${totNoRet}, 标签不符 ${totTag}, 编码失败/缺字 ${totEnc}, 太长 ${totTooLong})`);
   const missTop = Object.entries(encMiss).sort((a, b) => b[1] - a[1]).slice(0, 30);
   if (missTop.length) console.log("缺字 top30 (字:次数): " + missTop.map(([c, n]) => `${c}:${n}`).join(" "));
+  if (dump) {
+    fs.writeFileSync("out/field_toolong.json", JSON.stringify(toolong, null, 1));
+    fs.writeFileSync("out/field_tagmiss.json", JSON.stringify(tagmiss, null, 1));
+    fs.writeFileSync("out/field_misschar.json", JSON.stringify(misschar, null, 1));
+    console.log(`\n导出: 太长 ${toolong.length} → field_toolong.json, 标签不符 ${tagmiss.length} → field_tagmiss.json, 缺字 ${misschar.length} → field_misschar.json`);
+  }
   if (!dry && eccRanges.length) {
     console.log(`修 ECC ${eccRanges.length} 段…`);
     for (const [a, b] of eccRanges) spawnSync("python3", ["fix_ecc.py", String(a), String(b)], { stdio: "ignore" });
@@ -230,5 +432,6 @@ const cmd = process.argv[2];
 if (cmd === "verify") verify(process.argv[3] ? parseInt(process.argv[3]) : null);
 else if (cmd === "dry") apply(true, parseFilter(process.argv[3]));
 else if (cmd === "apply") apply(false, parseFilter(process.argv[3]));
-else console.log("用法: node apply_field.mjs verify|dry|apply [fileId|范围|列表]  (如 1075 / 1000-1143 / 64,84)");
+else if (cmd === "dumptoolong") apply(true, parseFilter(process.argv[3]), true);   // 导出太长条目(dry, 不写ISO)
+else console.log("用法: node apply_field.mjs verify|dry|apply|dumptoolong [fileId|范围|列表]");
 fs.closeSync(fd);

@@ -290,11 +290,18 @@ P2IS_Translation_Tools/
 
 | 文件 | 作用 | 状态 |
 |------|------|------|
-| **`build.py`** | **一键完整管道**：还原 ISO → D1（patch 描述符 + 搬 file 59 + 注字体 + 同步 file 86）→ 编码 zh/strtbl → apply（脚本按 file 分组 + strtbl + SLPS + savemenu + mainmenu + nametable + freetbl 三表 + **maptbl 地图区域/房间名**）→ 修 ECC → 报告 | ⭐ 主入口 |
+| **`build.py`** | **一键完整管道**：还原 ISO → D1（patch 描述符 + 搬 file 59 + 注字体 + 同步 file 86）→ 编码 zh/strtbl → apply（脚本按 file 分组 + strtbl + SLPS + savemenu + mainmenu + nametable + freetbl 三表 + **maptbl 地图区域/房间名 + citymap 城市图地点标签 + field 字段文本**）→ 修 ECC → 报告。`SKIP_FIELD=1` 跳过字段回插（二分调试用） | ⭐ 主入口 |
 | `apply_maptbl.mjs` | 翻译 map 97-136 sub0 头部的**区域名（左上角第一行）+ 房间名（第二行）**。原位等长替换 + `compress_optimal` 重压 + round-trip 校验。译表：`map_names_zh.json`（区域名审定）/ `strtbl 138_0_5`+`room_names_zh.json`（房间名） | ✅ |
-| `patch_subfile_table.py` | **D1 扩容 Step 1**：patch SLPS sub-file 描述符表（Desc1+Desc2 22→30 sectors） | ✅ |
-| `relocate_file59.py` | **D1 扩容 Step 2**：把 file 59 搬到 ISO 末尾 + sub-file 1 在 30 sectors offset；同时更新 FILEPOS.DAT 和 PVD | ✅ |
-| `inject_chinese_font.py` | **D1 字体注入**：读 working ISO file 59 → 扩 decompressed → inject 中文到 og kanji slot + 扩展 slot（从低位2575↑紧凑分配，避免覆盖 UI 数据）+ og 缺的假名 → LZSS 重压缩 → 修 ECC。除 all_translatable 外也扫 `out/*_zh.json`（各表用字）；用 `patch_subfile_table.set_subfile0_size` 按实际大小设动态 N | ✅ |
+| **`apply_citymap.mjs`** | 翻译**城市俯视图地点标签**（如 スマル・プリズン→苏摩鲁监狱）。这些在 **file 1113 未压缩区**是 og 码 + **`0x1000` 终止符**（非 RET 非字符串表 → 字段提取漏了；⚠`0x0000` 会渲染成「不能当填充）。精确匹配 JP 标签字节+后跟0x1000(确保完整标签)→原位换 CN+0x1000终止+填充。`LABELS` 字典可扩展 | ✅ |
+| **`extract_field_text.mjs`** | 提取主管道漏掉的**字段文本**（外景对话 file 1075、装备/简介/传闻 等，散在非-scene_script 自定义格式文件）。读全文件表(0x2400, 真实 1144 文件)、有界 sub 枚举、RET 定界、CJK 密度过滤、内容级去重 → `out/field_text.json` | ✅ |
+| **`clean_field_text.py`** | 清洗字段文本：过滤垃圾(单字符重复噪音)、按唯一 jp 去重 → `out/field_to_translate.json`(翻译输入) + `out/field_text_clean.json`(全部出现位置) | ✅ |
+| **`translatable/translate_field.py`** | 字段文本 DeepSeek-R1 批量翻译（复用角色名锁定，⚠Maya=**舞耶**非麻耶；保留 `<cXX/>`+`\n`；partial 按唯一 id 命名；`--merge` 合并 + NAME_FIX 归一化；`--retrans` 重译太长条目更短） | ✅ |
+| **`apply_field.mjs`** | 字段文本回插：原位等长(zh码+**RET紧跟zh**+全角空格填到原字节数；padding必须在RET后否则游戏逐字渲染空格卡顿)，**从 WORK 读**保留前面 apply、**跳过结构性条目**、未注册表文件按jp内容重建变长(不缩短)、绕过 cdimage 881 上限直接扇区写。**含归档子文件路径**：file 1112-1117/77 多sub归档里~1013条NPC对话(解压→原位改→`compress_optimal`重压保留头tag→塞回原sub槽不移偏移)。tag比对忽略装饰码`<c20/>`(救回93条描述)；encodeText把非cXX的`<占位符>`(如`<舞耶>`)当字符。`verify`/`dry`/`apply`/`dumptoolong`(导出太长/标签不符/缺字) | ✅ |
+| `shorten_toolong.py` | 把太长字段译文缩到≤budget(译者审定的等价缩写规则+逐条OVERRIDE,保意减字只裁多出部分)→合回 field_text_zh.json。太长 760→14 | ✅ |
+| `fix_misschar.py` | 字库没有的罕用字(频率1被丢)在译文里换常用同义词(摩羯座→山羊座/馒头→包子/内讧→内斗)，不占字库。缺字 22→0 | ✅ |
+| `patch_subfile_table.py` | **D1 扩容 Step 1**：patch SLPS sub-file 描述符表（Desc1+Desc2 22→**32** sectors，字段文本字多扩到 32；Desc1 实际由 set_subfile0_size 动态精确设） | ✅ |
+| `relocate_file59.py` | **D1 扩容 Step 2**：把 file 59 搬到 ISO 末尾 + sub-file 1 在 **32** sectors offset；同时更新 FILEPOS.DAT 和 PVD | ✅ |
+| `inject_chinese_font.py` | **D1 字体注入**：读 working ISO file 59 → inject 中文到 og kanji slot + 扩展 slot（从低位2575↑紧凑分配）+ og 缺的假名 → **`compress_optimal` 重压缩**(挤进 32 sectors) → 修 ECC。扫 all_translatable + map/room/**field_text_zh** + **名表/UI zh(提权,保证名字字形不被罕用对话字挤掉)**；动态 N。⚠ decompressed 仍 65520(RAM上限3575槽)，超出的极罕用字丢弃 | ✅ |
 | `inject_font_f86.py` | **file 86 字体同步**：命名界面等画面读 file 86（裸未压缩字库，非 file 59）；把注入 file 59 的同批中文字形（codetable≠og 的槽）写进 file 86 | ✅ |
 | `encode_zh.py` | 把 script 翻译编码成字符码 items（含 META 段处理 + 全角标点 alias），输出 `out/scripts_zh/` | ✅ |
 | `encode_strtbl.py` | 把 strtbl 翻译编码成 items，输出 `out/strtbl_zh/`（文件名 regex 支持 SLUS 前缀=file 0） | ✅ |
@@ -534,17 +541,25 @@ node verify_full.mjs
 - ✅ **左上角地点名（区域名+房间名）**（2026-06-03）：场景面板两行名字在 **map 文件 97-136 sub0 头部**（区域名=开头 og 码串；房间名=固定宽记录表 `[标志∅/」][名字][{1000}填充]`）。`apply_maptbl.mjs` 原位等长替换：区域名用人工审定表 `map_names_zh.json`（对齐对话正文 希巴尔巴/卡拉科尔，专名用户拍板），房间名取 `strtbl 138_0_5` 现成译法 + `room_names_zh.json` 覆盖个别超长（駐輪場→停车场、階段→楼梯）。边界规则（前∈{0,1} 后≥0x1000）防误伤瓦片数据；40 个图区域名 + 110 处房间名全写回
 - ✅ **最优 LZSS 压缩器**（2026-06-03）：`lib/lzss.mjs` 的 `compress_optimal`（DP 全局最优解析，token 格式不变游戏可解）。原贪心 `compress` 比原版游戏压缩器差 ~0.4%，导致紧实 archive（map 文件 5~6 sub 紧贴、0 slack）原位改名重压必膨胀 → 装不回。最优解析比原版**小 12~211 字节**，彻底拆掉压缩墙，且对话/字体链也受益（更多 headroom）。每个 map ~50-150ms，写回前强制 round-trip 校验防损坏
 - ✅ **字体槽等价兜底**（2026-06-03）：`jp_cn_equiv.json`（56 对 JP新字体→CN简体，如 姉→姐、駐→驻、階→阶）。`inject_chinese_font.py` 把这些 JP 字的 og 槽**强制渲染成 CN 简体字形**（即使该 JP 字在译文里也用了，无条件覆盖）；`encode_zh.py` 加等价别名让译文里字面的 JP 字编码到同一槽。作用：任何**漏翻的 og 汉字**（地图/未覆盖文本）优雅降级成可读简体，而非乱码
+- ✅ **字段文本大批量**（2026-06-04）：发现真实文件数 **1144**（原管道 cdimage 硬编码 0x1b88 只读 881，漏 881-1143）。提取主管道漏掉的字段文本——**外景/事件对话 file 1075（6336条!）+ 装备说明 + 人物简介 + 传闻**等（非-scene_script 自定义格式）。管道：`extract_field_text.mjs`(全表+有界sub+RET定界+CJK过滤) → `clean_field_text.py`(去重→10016唯一) → `translate_field.py`(DeepSeek-R1, ~10h/$15) → `apply_field.mjs`(原位等长, 从WORK读保留前面apply, 跳过strtbl表区+结构性条目, 含file>881)。字体扩到 **32 sectors** + `compress_optimal` 装下。详见"六"
+- ✅ **strtbl 带参控制码 + 终止符 bug 修复**（2026-06-03）：谣言描述等"乱码+闪一下消失"——`apply_strtbl` 的 `items_to_bytes` len nibble 写错(0x1100|cmd→`0x1000|(词数<<8)|cmd`) + `encode_strtbl` 丢了 `[6]WAIT` 终止符(硬加[1][3]→保留原 entry 尾部结构码)。游戏内确认修好
+- ✅ **归档子文件对话大补漏**（2026-06-04）：file **1112-1117 + 77** 是多sub归档，里面**~1013 条市井NPC/流言/剧情对话**已翻译但 apply_field 原来只认扁平 id `field:N:0x..`、归档 sub id `field:N_Md:0x..` 全被忽略 → 整片对话保留日文。加归档路径：解压→原位等长改→`compress_optimal` 重压保留头tag→塞回原 sub 槽(不移偏移、文件大小不变)。游戏内确认市井对话中文不崩
+- ✅ **字段回插 3 坑修复**（2026-06-04）：①padding 必须填 RET **后**（原来填前→游戏逐字渲染空格→对话框结束卡很久不能操作）；②tag 守恒比对忽略装饰码 `<c20/>`（DeepSeek 重组常丢，救回 93 条技能/装备描述 标签不符153→60）；③encodeText 把非 cXX 的 `<占位符>`(`<舞耶>`/`<前>`)当字符（修缺字None）
+- ✅ **太长全清 + 缺字归零**（2026-06-04）：`shorten_toolong.py` 逐条审定缩写(保意减字只裁多出部分)太长 760→14(仅2条内部niche拉丁名)；`fix_misschar.py` 罕用字换常用同义词(摩羯座→山羊座/馒头→包子)缺字 22→0，不占字库。`apply_field dumptoolong` 导出太长/标签不符/缺字三类供排查
+- ✅ **字体槽等价补 撃→击/闘→斗/歓→欢**：装备"攻撃力"显示日文 撃 → 加进 `jp_cn_equiv.json` og 槽渲染成 击
+- ✅ **城市俯视图地点标签**（2026-06-04）：スマル・プリズン→苏摩鲁监狱。读取源在 **file 1113 未压缩区**(og码+`0x1000`终止符，⚠`0x0000`渲染成「不能当填充)。`apply_citymap.mjs` 精确匹配JP标签字节+后跟0x1000→原位换CN，集成 build(4j2)。LABELS 字典可扩展
 
 **关于 "battle string"**：⚠️ **不存在独立的 battle string**。上游 `extract_battle_strings` 是失败的半成品（条件 `f[0]==8` 在真实文件零匹配，全 false）。所谓"战斗/剧情对话没翻"实际是 **RLE 压缩的 script 文件（file 3/4 等）被 apply_zh 的 bug 坑了**，已全部修复（最后一个坑是重压缩改了 byte[1] subtype 致白屏，2026-06-01 修，见"四、踩过的坑"）。
 
-**待解决（v2）：**
-- 🚧 **整片未提取的文件（场景文本）**（2026-06-03 发现）：主提取只覆盖脚本 file **3/4/90/178/181-577**，**file 5-89、91-180 整片没扫**。里面有**场景闲聊 NPC**（如"健康的な若者"在 file 46）、**道具箱/部分系统消息**（"〜手に入れた"模板）等字段文本 → 仍是日文。主线/事件对话已 100% 翻，这是下一阶段：扩展提取→翻译→应用这片文件
-- 🚧 **大地图地名标签**（如 スマル・プリズン）：138_0_5 已有译文（苏摩鲁监狱），但大地图读的是另一个源，待定位
-- ⚠️ **命名界面**：标签页(ひらがな/カタカナ/漢字)、DEL 是图片精灵（文本搜不到）；中间汉字大网格是输入字母表（不该翻）。少量代码 overlay 标签需 Ghidra
-- ⚠️ 个别超长对话保留原文（如 `90_126`，重压缩超 archive 槽容量，缩短译文可塞入）
+**发布策略（2026-06-05 决定）**：主体（剧情/对话/菜单/道具/技能/装备/简介/外景NPC/城市图，14000+条）已 100% 中文，**发公开测试版 → 随玩家反馈出补丁迭代**。剩余是散落边角，只在特定路线/界面才显示，单人审计找不全（玩家走不同路线几天能列全清单）。下列为 **v1 已知问题**，列入发布说明：
+
+- 🚧 **部分菜单/UI 文本**（2026-06-05 玩到后期发现）：仍有散落的菜单项是日文（各子菜单深处）。原因同设置菜单——很多是 `<c101>`(换行)定界、非 RET 定界，字段提取漏了；或在独立 UI 表/overlay。下一阶段：扩展提取覆盖 `<c101>` 定界的 UI 串
+- 🚧 **战斗状态UI角色名**：片假名名（ミッシェル/ギンコ）没翻 + 汉字名显示日文字形（達哉 应作 达哉、淳 应作 纯）。战斗 HP/SP 面板的名字读独立来源（非对话名表），待定位
+- 🚧 **命名界面**（2026-06-04 深查结论）：命名界面用**独立的原版未改日文字库**（漢字输入网格是 JIS 排序原版字形，证明我们的 file 59 字体注入根本没碰它）。标签 overlay 用自有编码，文本在数据文件/裸ISO里搜不到(slot码/SJIS均无)，需 Ghidra 逆向命名 overlay。**注**：英→狸 等疑似字形错，经验证非我们字体注入所致（命名字库独立未改）
+- ⚠️ **个别迷宫子区域名**（如 シバルバー中心部）：像城市图标签，发现一个往字典加一个，后续补丁
+- ⚠️ **标签不符残余 60 条**：多是 file-84 内部事件触发标签(獅子宮戦闘前，玩家不可见)，留日文
 - ⚠️ 对话框三角 + L1/L2 图标 + HP/¥/TIME 颜色 — 非文字 UI 元素（cosmetic）
 - ⚠️ 存档菜单「差込口X」插槽标签（SLPS 动态拼接，极小瑕疵）
-- ⚠️ 人名一致性校对（NPC 名对齐 PSP，进行中）
 
 ### D1 字库扩容方案（2026-05-28 突破）
 

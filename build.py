@@ -148,6 +148,10 @@ def step_apply_maptbl():
     step('4j. 把地图区域名写回 ISO (map 97-136 sub0 头部, 审定表 map_names_zh.json, 原位等长)')
     run(['node', 'apply_maptbl.mjs'])
 
+def step_apply_citymap():
+    step('4j2. 把城市俯视图地点标签写回 ISO (file 1113 未压缩区, og码+0x1000终止, apply_citymap)')
+    run(['node', 'apply_citymap.mjs'])
+
 def step_apply_field():
     if not os.path.exists(os.path.join(ROOT, 'out', 'field_text_zh.json')):
         return   # 还没翻字段文本就跳过
@@ -303,6 +307,7 @@ def main():
                 step_apply_config()
                 step_apply_names()
                 step_apply_maptbl()
+                step_apply_citymap()
                 step_apply_field()
         elif args.no_strtbl:
             print('\n[跳过] strtbl apply（隔离测试）')
