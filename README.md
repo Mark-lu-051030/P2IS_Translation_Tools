@@ -263,7 +263,7 @@ SLPS sub-file 描述符表 @ RAM 0x80010070-0x8001007f (ISO sector 29 offset 0x7
 | 文件 | 作用 |
 |------|------|
 | `archive.mjs` | Archive 解包 / 打包 |
-| `lzss.mjs` | LZSS 压缩 / 解压。`compress`=贪心（日常够用）；`compress_optimal`=DP 全局最优解析（比原版游戏压缩器小 12~211 字节，紧实 archive 原位改写必用，token 格式不变） |
+| `lzss.mjs` | LZSS 压缩 / 解压。`compress`=贪心（日常够用）；`compress_optimal`=DP 全局最优解析（比原版游戏压缩器小 12~211 字节，紧实 archive 原位改写必用，token 格式不变）；`compress_to_size(input,header_len,target_total)`=DP 压缩后用有效 token **精确填满到目标槽大小**（放不下返回 null）——给"sub 紧密排列、非扇区对齐、tc 必须=槽大小"的 map 文件原位重压用，避免补零致游戏解压垃圾黑屏 |
 | `rle.mjs` | RLE 压缩 / 解压。file 3/4 等剧情/战斗脚本用 RLE；`compress`（与 decompress token 格式对应）让 RLE 文件翻译后压回 RLE、保持 `byte[1]` subtype 不变——是觉醒/战斗白屏的修复关键 |
 | `cdimage.mjs` | ISO 扇区读写，管理 FILEPOS.DAT |
 | `msg_script.mjs` | 对话解析 / 编译（唯一可靠的对话工具） |
@@ -291,8 +291,8 @@ P2IS_Translation_Tools/
 | 文件 | 作用 | 状态 |
 |------|------|------|
 | **`build.py`** | **一键完整管道**：还原 ISO → D1（patch 描述符 + 搬 file 59 + 注字体 + 同步 file 86）→ 编码 zh/strtbl → apply（脚本按 file 分组 + strtbl + SLPS + savemenu + mainmenu + nametable + freetbl 三表 + **maptbl 地图区域/房间名 + citymap 城市图地点标签 + field 字段文本**）→ 修 ECC → 报告。`SKIP_FIELD=1` 跳过字段回插（二分调试用） | ⭐ 主入口 |
-| `apply_maptbl.mjs` | 翻译 map 97-136 sub0 头部的**区域名（左上角第一行）+ 房间名（第二行）**。原位等长替换 + `compress_optimal` 重压 + round-trip 校验。译表：`map_names_zh.json`（区域名审定）/ `strtbl 138_0_5`+`room_names_zh.json`（房间名） | ✅ |
-| **`apply_citymap.mjs`** | 翻译**城市俯视图地点标签**（如 スマル・プリズン→苏摩鲁监狱）。这些在 **file 1113 未压缩区**是 og 码 + **`0x1000` 终止符**（非 RET 非字符串表 → 字段提取漏了；⚠`0x0000` 会渲染成「不能当填充）。精确匹配 JP 标签字节+后跟0x1000(确保完整标签)→原位换 CN+0x1000终止+填充。`LABELS` 字典可扩展 | ✅ |
+| `apply_maptbl.mjs` | 翻译 map 97-136 sub0 头部的**区域名（左上角第一行）+ 房间名（第二行）**。原位等长替换 + **`compress_to_size` 精确填满原始槽重压**（tc=op 枚举/解压均正确，修了 padding 补零致进图黑屏的坑，见"四、踩过的坑"）。房间名表是 **16-uint16 固定宽记录**（名字左对齐 + `{1000}` 填充 + `·`/`」` 分隔符，在 sub0 中段与瓦片混排），用 **roomLut 查表 + 记录结构校验双重过滤** 精准定位（实测 95 处 0 瓦片误命中）。译表：`map_names_zh.json`（区域名审定）/ `strtbl 138_0_5`+`room_names_zh.json`（房间名） | ✅ |
+| **`apply_citymap.mjs`** | 翻译**城市俯视图地点标签**（如 スマル・プリズン→苏摩鲁监狱、廃工場→废工厂）。标签按区分散在 **file 1113/1114/1115/1116 未压缩区**（平坂/夢崎/青華/港南区各一簇，同簇重复 2-3 份），是 og 码 + **`0x1000` 终止符**（非 RET 非字符串表 → 字段提取漏了；⚠`0x0000` 会渲染成「不能当填充）。**偶对齐滑窗逐字符匹配 + 接受一码多形**（如 ヨ=879/543，预编码取末码+indexOf 会漏匹配）+ 后跟 0x1000 → 原位换 CN+0x1000终止+填充。`LABELS` 字典可扩展 | ✅ |
 | **`extract_field_text.mjs`** | 提取主管道漏掉的**字段文本**（外景对话 file 1075、装备/简介/传闻 等，散在非-scene_script 自定义格式文件）。读全文件表(0x2400, 真实 1144 文件)、有界 sub 枚举、RET 定界、CJK 密度过滤、内容级去重 → `out/field_text.json` | ✅ |
 | **`clean_field_text.py`** | 清洗字段文本：过滤垃圾(单字符重复噪音)、按唯一 jp 去重 → `out/field_to_translate.json`(翻译输入) + `out/field_text_clean.json`(全部出现位置) | ✅ |
 | **`translatable/translate_field.py`** | 字段文本 DeepSeek-R1 批量翻译（复用角色名锁定，⚠Maya=**舞耶**非麻耶；保留 `<cXX/>`+`\n`；partial 按唯一 id 命名；`--merge` 合并 + NAME_FIX 归一化；`--retrans` 重译太长条目更短） | ✅ |
@@ -514,6 +514,7 @@ node verify_full.mjs
 | **觉醒/战斗场景纯白屏（2026-06-01，调试最久）** | sub-file 头 `byte[1]` 是**场景脚本 subtype**（不是压缩类型）。apply 把 RLE 剧情/战斗脚本(file 3/4)重压成 LZSS 时强制 `r[1]=2`，改掉了 subtype → cutscene/战斗引擎据 byte[1] 走错处理 → 进场景 hang 纯白屏（debugger 无异常）。LZSS 文件本就 byte[1]=2 故无事，只有 RLE 文件中招 | `lib/rle.mjs` 实现 `compress`；apply 的 `compress_with_header` 对 `byte[1]==1` 的 sub 用 `rle.compress` 压回 RLE、保留原 byte[1]（不再强制 =2）。**铁证**：commit 53d3c1a(RLE 文件未翻=原版 RLE)正常 vs c408510(RLE 翻成 LZSS)白。⚠ 中途误判为"短译文 0x00 填充/改空格填充"，是弯路、已证伪 |
 | **worktree build 出来整个游戏是日文** | 新建的 git worktree 没有 conf.json，apply 找不到工作 ISO 路径写不进去；step_restore 又把 ISO 还原成 backup → 整盘日文 | 在 worktree 里 build 前先 `cp 主仓/conf.json`；或直接在主仓 build。诊断时务必先验证 working ISO 真翻译了（file 181/4 解压 ≠ backup）再下结论 |
 | **地图区域名原位改名重压"超容量"塞不回**（2026-06-03） | 不是名字变长——是 `lib/lzss.mjs` 贪心 `compress` 比原版游戏压缩器差 ~0.4%：原样不改重压就胀 +22~+78 字节。map 文件 5~6 sub 紧贴、文件尾 0 slack，胀 1 字节就溢出 | `lib/lzss.mjs` 加 `compress_optimal`（DP 全局最优解析），比原版小 12~211 字节 → 名字轻松塞回，不用搬文件。**先做无修改 round-trip 比原大小**就能区分"压缩器差"还是"数据变大" |
+| **进外景地图黑屏死机**（廃工場/ム大陸 等外景图，2026-06-08 公测后玩家报） | `apply_maptbl` 重压地图 sub0 后把压缩头 tc（offset 4）写成 **padding 后的槽大小 `op`** 而非真实压缩长度（`compress_optimal` 压完再补零到 op）。map 文件多个 sub **紧密排列、非扇区对齐**，游戏按 tc 读进尾部零填充 → 解压出垃圾 → 进图加载即黑屏死机（BGM 还在、左上角区域名能显示、场景全黑） | 改用 `lib/lzss.mjs` 新增的 `compress_to_size(d, 0xc, op)`：DP 最优压缩后用**有效 token 精确填满到原始槽大小**（无零填充），tc=op 时归档枚举 + 解压双双正确。⚠ 不能照搬 apply_field 的"tc=真实长度 + 槽内补零"——那招要求 sub 扇区对齐（遇零枚举跳到下个扇区边界找 sub），map 文件紧密排列会丢 sub |
 
 ---
 
@@ -548,6 +549,11 @@ node verify_full.mjs
 - ✅ **太长全清 + 缺字归零**（2026-06-04）：`shorten_toolong.py` 逐条审定缩写(保意减字只裁多出部分)太长 760→14(仅2条内部niche拉丁名)；`fix_misschar.py` 罕用字换常用同义词(摩羯座→山羊座/馒头→包子)缺字 22→0，不占字库。`apply_field dumptoolong` 导出太长/标签不符/缺字三类供排查
 - ✅ **字体槽等价补 撃→击/闘→斗/歓→欢**：装备"攻撃力"显示日文 撃 → 加进 `jp_cn_equiv.json` og 槽渲染成 击
 - ✅ **城市俯视图地点标签**（2026-06-04）：スマル・プリズン→苏摩鲁监狱。读取源在 **file 1113 未压缩区**(og码+`0x1000`终止符，⚠`0x0000`渲染成「不能当填充)。`apply_citymap.mjs` 精确匹配JP标签字节+后跟0x1000→原位换CN，集成 build(4j2)。LABELS 字典可扩展
+- ✅ **进图黑屏死机修复 + 房间名 + 大地图多文件**（2026-06-09，公测后玩家反馈）：
+  - **黑屏根因**：`apply_maptbl` 重压地图 sub0 时把压缩头 tc 写成 padding 后槽大小 `op` + 补零（`compress_optimal`）。map 文件多 sub **紧密排列、非扇区对齐**，游戏按 tc 读进尾部零填充 → 解压垃圾 → 进图黑屏（廃工場/ム大陸，BGM 还在、区域名能显示、场景全黑）。**改用 `compress_to_size(d,0xc,op)` 精确填满槽（无零填充）根治**，tc=op 枚举/解压均正确
+  - **房间名重新启用**：之前误以为房间名原位替换的假阳性是黑屏元凶而停用，真凶是上面的 tc bug。查明房间名表是 **16-uint16 固定宽记录**（在 sub0 中段与瓦片混排），改用 **roomLut 查表 + 记录结构校验双重过滤**，95 处命中 0 瓦片误伤（駐輪場→停车场 / 階段→楼梯 / 職員室→职员室 等）
+  - **大地图标签扩到多文件**：城市图标签按区分散在 **file 1113/1114/1115/1116**（之前只处理 1113）。廃工場 标签在 1116（不在 1113）。补齐 51 处（廃工場→废工厂、各区片假名地名）。修了 og 字库**一码多形**（ヨ=879/543）导致 indexOf 漏匹配 → 改字符→码集合滑窗匹配
+  - ⚠️ **"废工厂" vs "废工场"**：字体等价 `場`→`场` 只能给"废工场"；"废工**厂**"是意译，进图区域名走 `map_names_zh.json`、大地图标签走 `apply_citymap` 的 LABELS，两处独立不同源
 
 **关于 "battle string"**：⚠️ **不存在独立的 battle string**。上游 `extract_battle_strings` 是失败的半成品（条件 `f[0]==8` 在真实文件零匹配，全 false）。所谓"战斗/剧情对话没翻"实际是 **RLE 压缩的 script 文件（file 3/4 等）被 apply_zh 的 bug 坑了**，已全部修复（最后一个坑是重压缩改了 byte[1] subtype 致白屏，2026-06-01 修，见"四、踩过的坑"）。
 

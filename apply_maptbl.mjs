@@ -78,28 +78,45 @@ for(let id=97;id<=136;id++){
     }
   }
   // ── 房间名（名表固定宽记录 = 左上角第二行）──
-  // 边界：名字前一码∈{0(∅),1(」) 记录标志}，后一码≥0x1000({1000}填充=名字结束)。
-  // 原位等长替换：写中文码 + 用{1000}补齐到原日文码数（短名留原表填充约定）。
-  const nU=Math.floor(d.length/2);let rHit=0;
-  for(const{jc,zc}of roomCands){
+  // 表结构(2026-06-09 查明)：16-uint16(32B) 固定宽记录，名字左对齐 + {1000}填充 + 末尾分隔符(·=0/」=1)。
+  // 表在 sub0 中段(非头部)，与瓦片/碰撞数据混排。
+  // 精准定位 = roomLut 查表(只搜有正经译文的已知房间名) + 记录结构校验(双重过滤)：
+  //   ① 起点前一码是分隔符(0/1)；② 名字后连续 ≥1 个 {1000} 直到 0/1 分隔符；③ 整条记录(名+填充+分隔符)≤16 uint16。
+  // 垃圾瓦片区即便 idx0 偶可读，也几乎不可能同时满足"在 roomLut + 完整填充到分隔符 + 16 宽内"。
+  // 原位等长替换：写中文码 + {1000} 补齐到原日文码数。tc bug 已修(compress_to_size)，重压安全。
+  const ROOM_NAME_INPLACE=true;
+  const DRY=process.env.MAPTBL_DRY==='1';
+  const nU=Math.floor(d.length/2);let rHit=0;const roomLog=[];
+  if(ROOM_NAME_INPLACE)for(const{rj,rz,jc,zc}of roomCands){
     for(let pos=0;pos+jc.length<=nU;pos++){
       let hit=true;for(let k=0;k<jc.length;k++)if(d.readUInt16LE((pos+k)*2)!==jc[k]){hit=false;break;}
       if(!hit)continue;
       const prev=pos>0?d.readUInt16LE((pos-1)*2):0;
-      const next=(pos+jc.length<nU)?d.readUInt16LE((pos+jc.length)*2):0;
-      if(!((prev===0||prev===1)&&next>=0x1000))continue;  // 边界校验，防误伤瓦片数据
-      for(let k=0;k<zc.length;k++)d.writeUInt16LE(zc[k],(pos+k)*2);
-      for(let k=zc.length;k<jc.length;k++)d.writeUInt16LE(0x1000,(pos+k)*2);
-      changed=true;rHit++;
+      if(!(prev===0||prev===1))continue;  // ① 记录起点前是分隔符
+      // ② 名字后连续 {1000} 直到 0/1 分隔符；③ 记录总宽 ≤16 uint16
+      let q=pos+jc.length,fill=0;
+      while(q<nU&&d.readUInt16LE(q*2)===0x1000&&fill<=16){q++;fill++;}
+      const sep=q<nU?d.readUInt16LE(q*2):0xffff;
+      if(!((sep===0||sep===1)&&fill>=1&&(jc.length+fill+1)<=16))continue;
+      if(!DRY){
+        for(let k=0;k<zc.length;k++)d.writeUInt16LE(zc[k],(pos+k)*2);
+        for(let k=zc.length;k<jc.length;k++)d.writeUInt16LE(0x1000,(pos+k)*2);
+      }
+      changed=true;rHit++;roomLog.push(`${rj}→${rz}`);
     }
   }
-  if(rHit){roomHits+=rHit;roomMaps++;}
+  if(rHit){roomHits+=rHit;roomMaps++;if(DRY)console.log(`map${id} 房间名(${rHit}): ${roomLog.join('  ')}`);}
+  if(DRY){if(!changed)continue;continue;} // dry-run: 不写回
   if(!changed)continue;
-  // ── 重压(最优) + round-trip 校验 + 写回 ──
-  let r=lzss.compress_optimal(d,0xc);r.writeUInt32LE(sub.readUInt32LE(0),0);r.writeUInt32LE(r.byteLength,4);r.writeUInt32LE(uc,8);
-  const chk=lzss.decompress(r,12,r.byteLength-12,uc);
+  // ── 重压(精确目标大小) + round-trip 校验 + 写回 ──
+  // 地图 archive sub 紧密排列：游戏用 tc 枚举下一 sub(ptr+=tc)，同时用 tc-12 作为解压字节数。
+  // 必须让重压后的流恰好 = op-12 字节（无零填充），tc=op 同时满足枚举和解压。
+  const op=(sub.byteLength+3)&~3;
+  let r=lzss.compress_to_size(d,0xc,op);
+  if(!r){nofit.push(`${id}(compress_to_size失败)`);continue;}
+  r.writeUInt32LE(sub.readUInt32LE(0),0);r.writeUInt32LE(op,4);r.writeUInt32LE(uc,8);
+  const chk=lzss.decompress(r,12,op-12,uc);
   if(!chk||Buffer.compare(d,chk)!==0){rtfail.push(`${id}`);continue;}
-  const op=(sub.byteLength+3)&~3;if(r.byteLength<op){const pb=Buffer.alloc(op);r.copy(pb);pb.writeUInt32LE(op,4);r=pb;}
   let patched;try{patched=archive.patch_archive_inplace(arch,{0:r});}catch(e){nofit.push(`${id}(+${r.byteLength-((sub.byteLength+3)&~3)})`);continue;}
   await cdimage.write_file(cd,id,patched);
   const ps=Math.ceil(patched.byteLength/BS);await run([String(fb),String(fb+ps-1)]);

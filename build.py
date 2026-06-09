@@ -306,7 +306,7 @@ def main():
                 step_apply_contactui()
                 step_apply_config()
                 step_apply_names()
-                step_apply_maptbl()
+                step_apply_maptbl()   # 2026-06-09: 改用 compress_to_size 精确填满原始槽(无零填充),tc=op 枚举+解压均正确
                 step_apply_citymap()
                 step_apply_field()
         elif args.no_strtbl:
