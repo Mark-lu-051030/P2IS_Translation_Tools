@@ -20,6 +20,10 @@ const rev = {}; for (const [k, v] of Object.entries(ct)) if (typeof v === "strin
 // 城市图各区地点标签 JP→CN。译名对齐对话正文/区域名审定(map_names_zh)+ 用户拍板的专有名词。
 // 约束: CN 码数 ≤ JP 码数(原位等长替换, 不足用 0x1000 填充)。汉字地名(区名/警察署/海岸等)字体等价已可读, 不在此表。
 const LABELS = {
+  // 区名(玩家报"青胶区":青華区没翻,華 的 og 槽被字体注入的"胶"占用 → 渲染错字。显式翻译根治)
+  "青華区": "青华区", "夢崎区": "梦崎区",
+  // 玩家报漏翻标签(2026-06-10): 阿罗耶神社=对话既定译法; シルバーマン→希尔曼(对话样本); ロータス=餐厅
+  "アラヤ神社": "阿罗耶神社", "シルバーマン邸": "希尔曼宅", "ロータス": "莲花",
   // 平坂区 (file 1113)
   "スマイル平坂": "微笑平坂", "春日山高校": "春日山高中", "カメヤ横丁": "龟屋横丁",
   "坂上ビル": "坂上大厦", "ライブ屋": "Live", "スマル・プリズン": "苏摩鲁监狱", "宝瓶宮の神殿": "宝瓶宫神殿",
@@ -32,7 +36,7 @@ const LABELS = {
   // 青華区 (file 1115)
   "青華公園": "青华公园", "キスメット出版": "Kissmet", "青華通り": "青华通", "獅子宮の神殿": "狮子宫神殿",
 };
-const FILES = [1113, 1114, 1115, 1116];
+const FILES = [1112, 1113, 1114, 1115, 1116];  // 1112=街中(アラヤ神社/シルバーマン邸/ロータス @sub14未压缩区)
 
 function rfile(fd, id) {
   const o = Buffer.alloc(0x2400), s = Buffer.alloc(SECTOR); let off = 0, sec = 0x17 * SECTOR;
@@ -56,7 +60,9 @@ for (const [jp, cn] of Object.entries(LABELS)) {
 }
 
 const DRY = process.env.CITYMAP_DRY === '1';  // 只报告命中, 不写盘(单独验证用; 完整 build 勿设)
-const bfd = fs.openSync(BACKUP, "r");
+// 从 WORK 读: 1112-1117 是归档(apply_field 写对话进去),从 BACKUP 读整文件写回会抹掉对话翻译。
+// WORK 里标签仍是日文码(没人改过)→照样命中;已翻过的标签第二次跑match不到=幂等。
+const bfd = fs.openSync(WORK, "r");
 const wfd = DRY ? null : fs.openSync(WORK, "r+");
 let grandTotal = 0;
 

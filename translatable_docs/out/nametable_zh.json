@@ -5316,154 +5316,154 @@
   "off": 14080,
   "blen": 20,
   "jp": "MAGICIAN",
-  "zh": "魔术师",
+  "zh": "MAGICIAN",
   "skip": false
  },
  {
   "off": 14100,
   "blen": 22,
   "jp": "PRIESTESS",
-  "zh": "女祭司",
+  "zh": "PRIESTESS",
   "skip": false
  },
  {
   "off": 14122,
   "blen": 18,
   "jp": "EMPRESS",
-  "zh": "皇后",
+  "zh": "EMPRESS",
   "skip": false
  },
  {
   "off": 14140,
   "blen": 18,
   "jp": "EMPEROR",
-  "zh": "皇帝",
+  "zh": "EMPEROR",
   "skip": false
  },
  {
   "off": 14158,
   "blen": 24,
   "jp": "HIEROPHANT",
-  "zh": "教皇",
+  "zh": "HIEROPHANT",
   "skip": false
  },
  {
   "off": 14182,
   "blen": 16,
   "jp": "LOVERS",
-  "zh": "恋人",
+  "zh": "LOVERS",
   "skip": false
  },
  {
   "off": 14198,
   "blen": 18,
   "jp": "CHARIOT",
-  "zh": "战车",
+  "zh": "CHARIOT",
   "skip": false
  },
  {
   "off": 14216,
   "blen": 20,
   "jp": "STRENGTH",
-  "zh": "力量",
+  "zh": "STRENGTH",
   "skip": false
  },
  {
   "off": 14236,
   "blen": 16,
   "jp": "HERMIT",
-  "zh": "隐者",
+  "zh": "HERMIT",
   "skip": false
  },
  {
   "off": 14252,
   "blen": 18,
   "jp": "FORTUNE",
-  "zh": "命运之轮",
+  "zh": "FORTUNE",
   "skip": false
  },
  {
   "off": 14270,
   "blen": 18,
   "jp": "JUSTICE",
-  "zh": "正义",
+  "zh": "JUSTICE",
   "skip": false
  },
  {
   "off": 14288,
   "blen": 22,
   "jp": "HANGEDMAN",
-  "zh": "倒吊人",
+  "zh": "HANGEDMAN",
   "skip": false
  },
  {
   "off": 14310,
   "blen": 14,
   "jp": "DEATH",
-  "zh": "死神",
+  "zh": "DEATH",
   "skip": false
  },
  {
   "off": 14324,
   "blen": 24,
   "jp": "TEMPERANCE",
-  "zh": "节制",
+  "zh": "TEMPERANCE",
   "skip": false
  },
  {
   "off": 14348,
   "blen": 14,
   "jp": "DEVIL",
-  "zh": "恶魔",
+  "zh": "DEVIL",
   "skip": false
  },
  {
   "off": 14362,
   "blen": 14,
   "jp": "TOWER",
-  "zh": "塔",
+  "zh": "TOWER",
   "skip": false
  },
  {
   "off": 14376,
   "blen": 12,
   "jp": "STAR",
-  "zh": "星",
+  "zh": "STAR",
   "skip": false
  },
  {
   "off": 14388,
   "blen": 12,
   "jp": "MOON",
-  "zh": "月",
+  "zh": "MOON",
   "skip": false
  },
  {
   "off": 14400,
   "blen": 10,
   "jp": "SUN",
-  "zh": "太阳",
+  "zh": "SUN",
   "skip": false
  },
  {
   "off": 14410,
   "blen": 22,
   "jp": "JUDGEMENT",
-  "zh": "审判",
+  "zh": "JUDGEMENT",
   "skip": false
  },
  {
   "off": 14432,
   "blen": 14,
   "jp": "WORLD",
-  "zh": "世界",
+  "zh": "WORLD",
   "skip": false
  },
  {
   "off": 14446,
   "blen": 12,
   "jp": "FOOL",
-  "zh": "愚者",
+  "zh": "FOOL",
   "skip": false
  },
  {

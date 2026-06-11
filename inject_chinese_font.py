@@ -119,7 +119,9 @@ def main():
                 yield from walk_zh(v)
     NAME_BOOST = 100000
     extra_jsons = ['nametable_zh.json', 'names_zh.json', 'mainmenu_zh.json',
-                   'config_zh.json', 'contactui_zh.json', 'savemenu_zh.json']
+                   'config_zh.json', 'contactui_zh.json', 'savemenu_zh.json',
+                   'battleui_zh.json',   # SLPS 战斗UI区
+                   'affinity_zh.json']   # Persona属性抗性句(2026-06-10)(2026-06-10): 提示/状态/性格等,字形必须提权注入
     for fn in extra_jsons:
         p = os.path.join(ROOT, 'out', fn)
         if not os.path.exists(p):

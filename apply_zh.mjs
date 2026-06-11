@@ -144,18 +144,34 @@ function processSub(arch_buf, sub_id) {
   //   subtype 从 1 改成 2，cutscene/战斗引擎据 byte[1] 走错处理 → 进场景纯白屏。
   //   实证：53d3c1a(RLE文件未翻=原版RLE)正常 vs c408510(RLE翻成LZSS,byte1=2)白屏。
   function compress_with_header(buf) {
+    const orig_padded = (sub.byteLength + 3) & ~3;   // 原 sub 4字节对齐占用(=要填满的槽)
+    // ⚠ 关键修复(2026-06-10)：LZSS 用 compress_to_size 把压缩流"精确填满"到原槽大小(全是有效 token),
+    //   tc=真实压缩流长度=槽大小,无零 padding。
+    //   旧逻辑(零 padding + tc=槽大小)被游戏的"输入有界"解码器把尾部零当指令继续解析 →
+    //   往解压缓冲溢出 → 卡死(实证 file563_8:diag8 后卡死;与地图黑屏 tc bug 同源)。
+    //   解码看 uncomp_size 停的解码器无害,但游戏的不是,所以必须填有效 token 而非零。
+    {
+      // LZSS 和 RLE 都走 compress_to_size 精确填满(2026-06-10 RLE 补齐:
+      // Persona 変異/融合白屏嫌疑 = RLE 剧情/战斗脚本的零 padding 被输入有界解码当 token → 溢出)
+      const r = comp_type === 1 ? rle.compress_to_size(buf, 0xc, orig_padded)
+                                : lzss.compress_to_size(buf, 0xc, orig_padded);
+      if (r) {                                    // 装得下 → 精确填满槽
+        r.writeUInt32LE(sub.readUInt32LE(0), 0);  // 保留原 tag(byte[1]=subtype 不变)
+        r.writeUInt32LE(orig_padded, 4);          // tc = 槽大小 = 真实压缩流长度(无零 padding)
+        r.writeUInt32LE(buf.byteLength, 8);       // uc
+        return r;
+      }
+      // 返回 null = 压缩仍 > 槽(放不下) → 落到下面贪心版,交给容量检查/relocate 处理
+    }
     const r = comp_type === 1 ? rle.compress(buf, 0xc) : lzss.compress(buf, 0xc, true);
-    r.writeUInt32LE(sub.readUInt32LE(0), 0);   // 保留原 tag（byte[1]=subtype 保持不变）
+    r.writeUInt32LE(sub.readUInt32LE(0), 0);
     r.writeUInt32LE(r.byteLength, 4);
     r.writeUInt32LE(buf.byteLength, 8);
-    // ⚠ 紧排 archive（如 file 90）的 sub 之间无 sector padding。若 recomp 比原 sub 短，
-    //   留下的 0 会被 extract_files 误判为 sector padding → 后续 sub 错位/损坏。
-    //   解决：把 recomp 补齐到原 sub 的"对齐长度"，并让 len 字段=补齐后长度（解压看 uncomp_size 停，多余字节无害）。
-    const orig_padded = (sub.byteLength + 3) & ~3;   // 原 sub 4字节对齐占用
     if (r.byteLength < orig_padded) {
+      // 兜底(理论不应到达: compress_to_size 失败意味着贪心也 ≥ 槽)。保留旧零 padding 路径防回归。
       const padded = Buffer.alloc(orig_padded);
       r.copy(padded);
-      padded.writeUInt32LE(orig_padded, 4);   // len = 补齐后长度，保持 sub 边界不变
+      padded.writeUInt32LE(orig_padded, 4);
       return padded;
     }
     return r;

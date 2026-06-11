@@ -28,6 +28,7 @@ TABLES = {
     'contactui': {'sector': 271039, 'win': 4},
     'config':    {'sector': 271964, 'win': 4},
     'names':     {'sector': 221,    'win': 8},   # 角色姓/名/昵称（交涉对象名）
+    'battleui':  {'sector': 29244,  'win': 25},  # SLPS 内战斗UI区: 提示行(行動を選択して下さい)/交涉性格/战斗消息/作战说明/错误提示(玩家报战斗界面日文+错字渲染)
 }
 
 NL = 0x1101

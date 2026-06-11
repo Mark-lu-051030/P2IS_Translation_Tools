@@ -144,6 +144,14 @@ def step_apply_names():
     step('4i. 把角色名表写回 ISO (freetbl, 游离区 sector 221, 原位等长)')
     run(['python3', 'freetbl.py', 'names', 'apply'])
 
+def step_apply_battleui():
+    step('4i2. 把SLPS战斗UI区写回 ISO (freetbl, sector 29244, 提示/状态/性格/作战说明, 原位等长)')
+    run(['python3', 'freetbl.py', 'battleui', 'apply'])
+
+def step_apply_battlenames():
+    step('4i3. 战斗HP/SP面板角色名 (file1129 名字簇 og码+{1000}终止, 原位等长, 模式搜索定位)')
+    run(['node', 'apply_battlenames.mjs'])
+
 def step_apply_maptbl():
     step('4j. 把地图区域名写回 ISO (map 97-136 sub0 头部, 审定表 map_names_zh.json, 原位等长)')
     run(['node', 'apply_maptbl.mjs'])
@@ -151,6 +159,18 @@ def step_apply_maptbl():
 def step_apply_citymap():
     step('4j2. 把城市俯视图地点标签写回 ISO (file 1113 未压缩区, og码+0x1000终止, apply_citymap)')
     run(['node', 'apply_citymap.mjs'])
+
+def step_apply_affinity():
+    step('4j3. Persona属性抗性句翻译 (file47/69/70/71/1109 副本, 模板句典+原位等长, apply_affinity)')
+    run(['node', 'apply_affinity.mjs', 'apply'])
+
+def step_apply_musichall():
+    step('4j5. 音乐堂上班族夹缝对话手工补丁 (file1115_20, 码密集区被CJK过滤漏提取, apply_musichall)')
+    run(['node', 'apply_musichall.mjs'])
+
+def step_apply_tarot():
+    step('4j4. 塔罗/魔法卡描述副本 (file1105主显示源+64-67残留, 查strtbl:64_0_*译文原位等长, apply_tarot)')
+    run(['node', 'apply_tarot.mjs', 'apply'])
 
 def step_apply_field():
     if not os.path.exists(os.path.join(ROOT, 'out', 'field_text_zh.json')):
@@ -306,8 +326,13 @@ def main():
                 step_apply_contactui()
                 step_apply_config()
                 step_apply_names()
+                step_apply_battleui()
+                step_apply_battlenames()
                 step_apply_maptbl()   # 2026-06-09: 改用 compress_to_size 精确填满原始槽(无零填充),tc=op 枚举+解压均正确
                 step_apply_citymap()
+                step_apply_affinity()
+                step_apply_tarot()
+                step_apply_musichall()
                 step_apply_field()
         elif args.no_strtbl:
             print('\n[跳过] strtbl apply（隔离测试）')
