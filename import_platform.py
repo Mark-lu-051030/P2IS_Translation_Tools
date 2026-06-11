@@ -16,17 +16,45 @@
 #      freetbl 类(config 等)整窗重排,超长只警告不跳过(build 时 freetbl 会兜底报溢出)
 # 用法: python3 import_platform.py 下载的文件.json          (干跑,只出报告)
 #       python3 import_platform.py 下载的文件.json --apply  (写回,先备份 *.bak)
+import glob as _glob
 import json, re, shutil, sys, os
 from collections import defaultdict
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
-if len(sys.argv) < 2:
-    sys.exit("用法: python3 import_platform.py <平台导出.json> [--apply]")
-SRC_FILE, APPLY = sys.argv[1], '--apply' in sys.argv
+ARGS = [a for a in sys.argv[1:] if not a.startswith('--')]
+APPLY = '--apply' in sys.argv
+if not ARGS:
+    sys.exit("用法: python3 import_platform.py <导出1.json> [导出2.json ... | 目录] [--apply]")
 
-recs = json.load(open(SRC_FILE, encoding='utf-8'))
-if isinstance(recs, dict): recs = recs.get('items') or recs.get('data') or []
-print(f"平台导出: {len(recs)} 条  模式: {'写回' if APPLY else '干跑(加 --apply 才写)'}\n")
+# 多文件/目录支持: 目录取其中全部 *.json;同一 id 多文件给出不同译文 → 后者覆盖前者并计入"文件间冲突"
+srcs = []
+for a in ARGS:
+    if os.path.isdir(a):
+        srcs += sorted(_glob.glob(os.path.join(a, '*.json')))
+    else:
+        srcs.append(a)
+recs, seen_tr = [], {}          # seen_tr: id → (translation, 来源文件)
+conflicts = []
+for sf in srcs:
+    d = json.load(open(sf, encoding='utf-8'))
+    if isinstance(d, dict): d = d.get('items') or d.get('data') or []
+    n_conf = 0
+    for r in d:
+        rid = r.get('id') or ''
+        tr = r.get('translation') if r.get('translation') is not None else r.get('zh')
+        if rid in seen_tr and seen_tr[rid][0] != tr:
+            n_conf += 1
+            if len(conflicts) < 10:
+                conflicts.append(f"{rid}: [{seen_tr[rid][1]}]≠[{os.path.basename(sf)}] 取后者")
+        seen_tr[rid] = (tr, os.path.basename(sf))
+        recs.append(r)
+    print(f"  + {sf}: {len(d)} 条" + (f" (与前面文件冲突 {n_conf} 条,取本文件)" if n_conf else ''))
+# 同 id 去重: 保留最后一次出现(后传入的文件视为更新)
+recs = list({(r.get('id') or '') + '\x00' + (r.get('jp') or ''): r for r in recs}.values())
+if conflicts:
+    print("  ▸ 文件间冲突示例:")
+    for c in conflicts: print(f"      {c}")
+print(f"平台导出合计: {len(recs)} 条(去重后)  模式: {'写回' if APPLY else '干跑(加 --apply 才写)'}\n")
 
 def load(f): return json.load(open(f, encoding='utf-8'))
 TARGETS = {  # 懒加载缓存: 路径 → (数据, 是否被改)
@@ -73,6 +101,14 @@ def put(obj, key, path, rid, jp_src, zh_new, len_strict=False):
         prob('jp不匹配', rid, f"源[{(jp_src or '')[:25]!r}] 平台[{(r_jp or '')[:25]!r}]"); return
     if not tags_ok(jp_src, zh_new):
         prob('标签非法(译文有原文没有的标签)', rid, zh_new[:40]); return
+    # 换行检查(告警不拦截): 游戏不自动换行,一行约24全角字,超出画到框外。
+    # jp 多行而译文无 \n、或译文有超长单行 → 提醒人工检查
+    jp_nl = (jp_src or '').count('\\n') + (jp_src or '').count('\n')
+    zh_nl = zh_new.count('\\n') + zh_new.count('\n')
+    if jp_nl >= 1 and zh_nl == 0:
+        prob('⚠告警:jp有换行而译文无\\n(已写入,检查是否画出框外)', rid, strip(zh_new)[:30])
+    elif max((len(strip(l)) for l in re.split(r'\\\\n|\n', zh_new)), default=0) > 24:
+        prob('⚠告警:译文存在超24字单行(已写入,可能画出框外)', rid, strip(zh_new)[:30])
     if len_strict and len(strip(zh_new)) > len(strip(jp_src)):
         prob('超长跳过(原位等长类,写了也白翻)', rid,
              f"{len(strip(zh_new))}>{len(strip(jp_src))} {strip(zh_new)[:30]}"); return

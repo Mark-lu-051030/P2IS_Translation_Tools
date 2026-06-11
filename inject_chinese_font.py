@@ -248,7 +248,7 @@ def main():
     # = (65520-0x480)//18 = 3575。超过 slot 3575 会让 decompressed > 65520，覆盖字库后面
     # RAM 0x801DE7F0+ 的 UI 数据 → HP/¥/菜单标题颜色乱、选项框空、战斗 invalid read。
     # 所以从 2575 往上用最小 slot 号，让 decompressed 尽量小（611 字只到 slot ~3185 = 58500 字节）。
-    MAX_SAFE_SLOT = (65520 - 0x480) // 18   # = 3575
+    MAX_SAFE_SLOT = (65520 - 0x480) // 18 - 1   # = 3575 (槽s占[0x480+18s,0x480+18(s+1)), 整除时必须-1; 3576曾溢出致"秋"乱码)
     ext_slots = list(range(OG_MAX + 1, MAX_SAFE_SLOT + 1))   # 2575,2576,...,3575 低到高
 
     # 合并：先 og kanji（替换日文，不增 decompressed），再扩展区（从低位填，最小化 decompressed）
@@ -295,6 +295,64 @@ def main():
         sample = ''.join(skipped_chars[:30])
         print(f'        最低频 30 字: {sample}')
         print(f'        完整列表已写: out/skipped_chars.txt')
+
+    # === 钉死布局覆盖（v0.2 存档兼容, 2026-06-11）===
+    # 玩家存档(记忆卡)里的称呼字符串存的是【字符码】。上面的频率分配每次 build 都会
+    # 重排新分配字的槽位 → 升级版本后旧档人名全乱(丽→导/银→败, v0.3.0 人名乱套实证)。
+    # 有 codetable_pinned.json(=v0.2 公测 52314b0 的最终码表)时: 完整复现它的 slot→字,
+    # 新字只占【腾退槽】(pinned 里已不再使用的字让位), 布局永久稳定。
+    # 每次成功后把演进结果写回 pinned, 之后版本继续钉。
+    pinned_path = os.path.join(ROOT, 'codetable_pinned.json')
+    if os.path.exists(pinned_path):
+        print('[2.5/7] 钉死布局模式: 复现 codetable_pinned.json (v0.2 兼容)...')
+        pin = json.load(open(pinned_path, encoding='utf-8'))
+        final = {int(k): v for k, v in pin.items()
+                 if k.isdigit() and isinstance(v, str) and len(v) == 1}
+        # 槽 >3575 无法渲染(decompressed 65520 上限, off-by-one 历史产物): 字转入新分配队列
+        for s in [s for s in final if s > 3575]:
+            print(f'      ⚠ pinned 槽 {s} 超渲染上限, 其字 [{final[s]}] 转新分配')
+            final.pop(s)
+        ours = {s: ch for s, ch in final.items() if ct_og.get(str(s)) != ch}
+        pin_chars = set(final.values())
+        # 腾退: 我们的槽里、当前译文已不再使用的字(名表关键字必在 needed, 天然不可腾退)
+        evictable = sorted(s for s, ch in ours.items() if ch not in needed_set)
+        # 新字队列: 排除 equiv 可别名满足的日文字(時→时 等, encode_zh 会映射到 CN 槽,
+        # 不排除的话它们按高频挤占腾退槽, 真正的新字反而进不来)
+        _eq = {}
+        _eqp = os.path.join(ROOT, 'jp_cn_equiv.json')
+        if os.path.exists(_eqp):
+            _eq = json.load(open(_eqp, encoding='utf-8'))
+        queue = [c for c in needed if c not in pin_chars
+                 and _eq.get(c, c) not in pin_chars]   # 按频率高→低
+        placed = {}
+        skipped_chars = []
+        for c in queue:
+            if evictable:
+                s = evictable.pop(0)
+                old = ours.get(s)
+                final[s] = c; ours[s] = c; placed[c] = s
+            else:
+                skipped_chars.append(c)
+        # 覆盖下游变量: 渲染全部走 forced_slots(slot→字, 天然支持一字多槽), inject_chars 清空
+        og_reused = {ch: s for s, ch in final.items()
+                     if ct_og.get(str(s)) == ch and ch in needed_set}
+        assignments = {}
+        for s, ch in sorted(ours.items()):
+            assignments.setdefault(ch, s)
+        inject_chars = {}
+        forced_slots = dict(ours)
+        used_in_run = set(final.keys())
+        print(f'      pinned 复现 {len(final)} 槽 (我们的 {len(ours)}, og 原样 {len(final)-len(ours)})')
+        print(f'      新字入腾退槽 {len(placed)} 个: ' + ''.join(f'{c}@{s} ' for c, s in list(placed.items())[:10]))
+        if skipped_chars:
+            with open(os.path.join(ROOT, 'out', 'skipped_chars.txt'), 'w', encoding='utf-8') as f:
+                for ch in skipped_chars:
+                    f.write(f'{ch}\t{freq.get(ch, 0)}\n')
+            print(f'      ⚠ 腾退槽不足, {len(skipped_chars)} 字跳过(频率最低): {"".join(skipped_chars[:20])}')
+        else:
+            sk = os.path.join(ROOT, 'out', 'skipped_chars.txt')
+            if os.path.exists(sk):
+                open(sk, 'w').close()
 
     # 3. 读取文件 59 archive — D1 模式从 working ISO 读（已经 layout 转换过）
     print('[3/7] 读取文件 59 archive (D1 layout)...')
@@ -375,6 +433,11 @@ def main():
     with open(CODETABLE, 'w', encoding='utf-8') as f:
         json.dump(new_ct, f, ensure_ascii=False, separators=(',', ':'))
     print(f'      codetable.json 已更新（{len(new_ct)} 条 = og {len(ct_og)} + 新中文 {len(assignments)} - 覆盖）')
+    # 钉死布局: 把本次最终布局写回 pinned, 下次 build 继续钉(新字槽位从此也稳定)
+    if os.path.exists(os.path.join(ROOT, 'codetable_pinned.json')):
+        with open(os.path.join(ROOT, 'codetable_pinned.json'), 'w', encoding='utf-8') as f:
+            json.dump(new_ct, f, ensure_ascii=False, separators=(',', ':'))
+        print('      codetable_pinned.json 已同步(演进式钉死)')
 
     # 修 ECC（file 59 区域）
     sector_count = (size59 + BLOCK_SIZE - 1) // BLOCK_SIZE

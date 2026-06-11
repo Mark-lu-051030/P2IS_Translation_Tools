@@ -380,18 +380,18 @@ function apply(dry, fileFilter, dump) {
         subWrote++;
       }
       if (dry || !subWrote) continue;
-      // 重压缩 + 保留头 tag(byte0-3) + 更新 tc/uc
+      // ⚠ 重压必须保持 tc 与原 sub 完全一致(compress_to_size 用有效 token 精确填满):
+      //   游戏按 tc 链式定位同组后续 sub(本函数 354 行的 ptr+=len 就是同款走法),
+      //   tc 变短 → 同组后续 sub 全部错位 → 错位垃圾被当压缩数据解压 → 白屏/卡死
+      //   (实证: 変異台词 file77 归档 sub 链条错位 = v0.3.0 融合白屏根因, RAM 0x800ad870 错位类MIPS垃圾)。
       let recomp;
-      try { recomp = (type === 2) ? lzss.compress_optimal(dc, 12) : rle.compress(dc, 12); } catch { console.log(`file ${id}_${si}d 重压缩失败,跳过保原`); continue; }
+      try { recomp = (type === 2) ? lzss.compress_to_size(dc, 12, tc) : rle.compress_to_size(dc, 12, tc); } catch { recomp = null; }
+      if (!recomp) { console.log(`file ${id}_${si}d 压不进原tc(${tc}),跳过保原`); continue; }
       arch.copy(recomp, 0, sub.off, sub.off + 4);
-      recomp.writeUInt32LE(recomp.length, 4); recomp.writeUInt32LE(dc.length, 8);
-      const nextOff = (si + 1 < subs.length) ? subs[si + 1].off : sz;
-      const slot = nextOff - sub.off;
-      if (recomp.length > slot) { console.log(`file ${id}_${si}d 重压(${recomp.length})>原槽(${slot}),跳过保原`); continue; }
-      recomp.copy(arch, sub.off);
-      for (let z = sub.off + recomp.length; z < nextOff; z++) arch[z] = 0;   // 槽内余下补零
+      recomp.writeUInt32LE(tc, 4); recomp.writeUInt32LE(dc.length, 8);
+      recomp.copy(arch, sub.off);   // 长度==tc, tc 之后到下一 sub 的原始对齐字节不动
       fileWrote += subWrote;
-      console.log(`file ${id}_${si}d: [归档sub重压] 写 ${subWrote} (压 ${recomp.length}/槽 ${slot})`);
+      console.log(`file ${id}_${si}d: [归档sub重压] 写 ${subWrote} (精确填满原tc ${tc})`);
     }
     totWrote += fileWrote;
     if (!dry && fileWrote) {

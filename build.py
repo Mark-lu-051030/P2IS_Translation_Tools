@@ -327,7 +327,8 @@ def main():
                 step_apply_config()
                 step_apply_names()
                 step_apply_battleui()
-                step_apply_battlenames()
+                # step_apply_battlenames()  # 2026-06-11 摘除: 冷启动验证游戏不读file1129名字簇(无效),
+                #   且v0.3.0玩家报战斗人名乱套,先消掉此变量;file1129已手工还原原版字节
                 step_apply_maptbl()   # 2026-06-09: 改用 compress_to_size 精确填满原始槽(无零填充),tc=op 枚举+解压均正确
                 step_apply_citymap()
                 step_apply_affinity()
