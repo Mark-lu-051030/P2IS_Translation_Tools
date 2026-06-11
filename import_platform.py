@@ -80,10 +80,12 @@ DICT_FILES = {'map_names': 'map_names_zh.json', 'room_names': 'room_names_zh.jso
 
 TAG = re.compile(r'<[^<>]*>')
 strip = lambda s: TAG.sub('', s or '')
-def tags_ok(jp, zh):           # 译文标签 ⊆ 原文标签(允许删,不允许造)
+SOFT_TAGS = {'<SURNAME/>'}     # 软码:数量可随断行增减(与 check_translation.py 一致)
+def tags_ok(jp, zh):           # 译文标签 ⊆ 原文标签(允许删,不允许造;软码除外)
     have = defaultdict(int)
     for t in TAG.findall(jp or ''): have[t] += 1
     for t in TAG.findall(zh or ''):
+        if t in SOFT_TAGS: continue
         have[t] -= 1
         if have[t] < 0: return False
     return True
