@@ -16,3 +16,27 @@ out/scripts.bak.*/
 # 批量翻译切片产物（spliter.py 可重新生成）
 translatable/all_translatable.json
 translatable/translatable_*.json
+
+# ── 2026-06-11: 模拟器存档 + out/ 全忽略白名单制 ──
+# 即时存档/记忆卡(调试用)
+saves/
+*.sav
+*.mcd
+
+# out/ 默认全忽略——中间产物全部可由 build.py 再生:
+#   scripts/(提取) string_table/ battle/(废弃半成品) bisect/(快照) field_text*.json(提取/清洗中间态)
+# 白名单 = 最终译文(人工/平台校对成果,不可再生,必须提交)
+out/*
+!out/*_zh.json
+!out/skipped_chars.txt
+*.namebak
+# 密钥(DeepSeek API key 等)
+translatable/.env
+.env
+# 批量翻译切片工作目录(可由 spliter 再生)与平台下载收件箱(导入后并入 all_translatable/field_text_zh)
+translatable/partials/
+translatable/partials_field/
+translatable/partials_strtbl/
+translatable/past_partials/
+done_translate/
+deprecated_d1_approach/translatable_misc/

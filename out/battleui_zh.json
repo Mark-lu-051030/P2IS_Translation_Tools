@@ -1,0 +1,1668 @@
+[
+ {
+  "off": 1638,
+  "blen": 12,
+  "jp": "<1103>行動設定",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1650,
+  "blen": 14,
+  "jp": "<1103>コンタクト",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1664,
+  "blen": 14,
+  "jp": "<1103>アナライズ",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1678,
+  "blen": 14,
+  "jp": "<1103>コンフィグ",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1692,
+  "blen": 8,
+  "jp": "<1103>退却",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1700,
+  "blen": 12,
+  "jp": "<1103>デバッグ",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1712,
+  "blen": 14,
+  "jp": "<1103>魔法DBG",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1726,
+  "blen": 6,
+  "jp": "<1103>:",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1732,
+  "blen": 8,
+  "jp": "<1103>攻撃",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1740,
+  "blen": 12,
+  "jp": "<1103>ペルソナ",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1752,
+  "blen": 12,
+  "jp": "<1103>アイテム",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1764,
+  "blen": 14,
+  "jp": "<1103>Pチェンジ",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1778,
+  "blen": 14,
+  "jp": "<1103>ステータス",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1792,
+  "blen": 8,
+  "jp": "<1103>防御",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1800,
+  "blen": 10,
+  "jp": "<1103>経験値",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1810,
+  "blen": 8,
+  "jp": "<1103>お金",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1818,
+  "blen": 12,
+  "jp": "<1103>アイテム",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1830,
+  "blen": 6,
+  "jp": "<1103>:",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1836,
+  "blen": 24,
+  "jp": "<1103>0123456789",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1860,
+  "blen": 8,
+  "jp": "<1103>瀬死",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1868,
+  "blen": 8,
+  "jp": "<1103>暴走",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1876,
+  "blen": 8,
+  "jp": "<1103>憑依",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1884,
+  "blen": 8,
+  "jp": "<1103>魅惑",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1892,
+  "blen": 8,
+  "jp": "<1103>混乱",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1900,
+  "blen": 8,
+  "jp": "<1103>魔封",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1908,
+  "blen": 8,
+  "jp": "<1103>猛毒",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1916,
+  "blen": 8,
+  "jp": "<1103>睡眠",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1924,
+  "blen": 8,
+  "jp": "<1103>狂暴",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1932,
+  "blen": 8,
+  "jp": "<1103>幻影",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1940,
+  "blen": 8,
+  "jp": "<1103>感電",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1948,
+  "blen": 8,
+  "jp": "<1103>氷結",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1956,
+  "blen": 8,
+  "jp": "<1103>LV",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1964,
+  "blen": 14,
+  "jp": "<1103>行動順変更",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1978,
+  "blen": 12,
+  "jp": "<1103>合体魔法",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 1990,
+  "blen": 12,
+  "jp": "<1103>ノーマル",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2002,
+  "blen": 12,
+  "jp": "<1103>シングル",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2014,
+  "blen": 16,
+  "jp": "<1103>順序リセット",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2030,
+  "blen": 8,
+  "jp": "<1103>攻撃",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2038,
+  "blen": 8,
+  "jp": "<1103>防御",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2046,
+  "blen": 8,
+  "jp": "<1103>魔攻",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2054,
+  "blen": 8,
+  "jp": "<1103>魔防",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2062,
+  "blen": 8,
+  "jp": "<1103>消費",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2070,
+  "blen": 8,
+  "jp": "<1103>作戦",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2078,
+  "blen": 14,
+  "jp": "<1103>戦闘モード",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2092,
+  "blen": 10,
+  "jp": "<1103>:自動",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2102,
+  "blen": 10,
+  "jp": "<1103>:待機",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2112,
+  "blen": 10,
+  "jp": "<1103>:不可",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2122,
+  "blen": 8,
+  "jp": "<1103>自動",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2130,
+  "blen": 8,
+  "jp": "<1103>待機",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2138,
+  "blen": 8,
+  "jp": "<1103>不可",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2146,
+  "blen": 6,
+  "jp": "<1103>/",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2152,
+  "blen": 8,
+  "jp": "<1103>能力",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2160,
+  "blen": 8,
+  "jp": "<1103>状態",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2168,
+  "blen": 8,
+  "jp": "<1103>個性",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2176,
+  "blen": 8,
+  "jp": "<1103>解説",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2184,
+  "blen": 16,
+  "jp": "<1103>所持アイテム",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2200,
+  "blen": 20,
+  "jp": "<1103>ノーマルアイテム",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2220,
+  "blen": 16,
+  "jp": "<1103>レアアイテム",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2236,
+  "blen": 10,
+  "jp": "<1103>契約中",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2246,
+  "blen": 6,
+  "jp": "<1103>?",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2252,
+  "blen": 8,
+  "jp": "<1103>高慢",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2260,
+  "blen": 8,
+  "jp": "<1103>短気",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2268,
+  "blen": 8,
+  "jp": "<1103>弱気",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2276,
+  "blen": 8,
+  "jp": "<1103>強気",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2284,
+  "blen": 8,
+  "jp": "<1103>陰気",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2292,
+  "blen": 8,
+  "jp": "<1103>陽気",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2300,
+  "blen": 8,
+  "jp": "<1103>愚か",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2308,
+  "blen": 8,
+  "jp": "<1103>賢い",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2316,
+  "blen": 10,
+  "jp": "<1103>獅子座",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2326,
+  "blen": 8,
+  "jp": "<1103>B型",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2334,
+  "blen": 8,
+  "jp": "<1103>蟹座",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2342,
+  "blen": 8,
+  "jp": "<1103>O型",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2350,
+  "blen": 8,
+  "jp": "<1103>蠍座",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2358,
+  "blen": 8,
+  "jp": "<1103>O型",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2366,
+  "blen": 10,
+  "jp": "<1103>牡牛座",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2376,
+  "blen": 8,
+  "jp": "<1103>A型",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2384,
+  "blen": 10,
+  "jp": "<1103>水瓶座",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2394,
+  "blen": 10,
+  "jp": "<1103>AB型",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2404,
+  "blen": 10,
+  "jp": "<1103>牡羊座",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2414,
+  "blen": 8,
+  "jp": "<1103>A型",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2422,
+  "blen": 8,
+  "jp": "<1103>なし",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2430,
+  "blen": 8,
+  "jp": "<1103>達は",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2438,
+  "blen": 6,
+  "jp": "<1103>・",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2444,
+  "blen": 16,
+  "jp": "<1103>逃げ出した!",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2460,
+  "blen": 12,
+  "jp": "<1103>こけた!",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2472,
+  "blen": 22,
+  "jp": "<1103>合体魔法ワーニング",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2494,
+  "blen": 20,
+  "jp": "<1103>装備していません",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2514,
+  "blen": 8,
+  "jp": "<1103>周防",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2522,
+  "blen": 8,
+  "jp": "<1103>天野",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2530,
+  "blen": 8,
+  "jp": "<1103>三科",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2538,
+  "blen": 8,
+  "jp": "<1103>リサ",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2546,
+  "blen": 8,
+  "jp": "<1103>黒須",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2554,
+  "blen": 6,
+  "jp": "<1103>黛",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2560,
+  "blen": 8,
+  "jp": "<1103>達哉",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2568,
+  "blen": 8,
+  "jp": "<1103>舞耶",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2576,
+  "blen": 8,
+  "jp": "<1103>栄吉",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2584,
+  "blen": 6,
+  "jp": "<1103>シ",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2590,
+  "blen": 6,
+  "jp": "<1103>淳",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2596,
+  "blen": 10,
+  "jp": "<1103>ゆきの",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2606,
+  "blen": 12,
+  "jp": "<1103>個性なし",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2618,
+  "blen": 12,
+  "jp": "<1103>戦闘演出",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2630,
+  "blen": 10,
+  "jp": "<1103>リアル",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2640,
+  "blen": 12,
+  "jp": "<1103>シンプル",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2652,
+  "blen": 22,
+  "jp": "<1103>カーソル位置の記憶",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2674,
+  "blen": 8,
+  "jp": "<1103>ON",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2682,
+  "blen": 10,
+  "jp": "<1103>OFF",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2692,
+  "blen": 12,
+  "jp": "<1103>EXIT",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2704,
+  "blen": 8,
+  "jp": "<1103>魔法",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2712,
+  "blen": 8,
+  "jp": "<1103>決定",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2720,
+  "blen": 12,
+  "jp": "<1103>設定終了",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2732,
+  "blen": 12,
+  "jp": "<1103>全員攻撃",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2744,
+  "blen": 8,
+  "jp": "<1103>決定",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2752,
+  "blen": 12,
+  "jp": "<1103>ナチズム",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2764,
+  "blen": 14,
+  "jp": "<1103>カメニズム",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2778,
+  "blen": 12,
+  "jp": "<1103>支離滅裂",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2790,
+  "blen": 14,
+  "jp": "<1103>新し物好き",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2804,
+  "blen": 12,
+  "jp": "<1103>国家主義",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2816,
+  "blen": 12,
+  "jp": "<1103>かたくな",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2828,
+  "blen": 14,
+  "jp": "<1103>増えたガり",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2842,
+  "blen": 18,
+  "jp": "<1103>コツコツタイプ",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2860,
+  "blen": 10,
+  "jp": "<1103>芸人魂",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2870,
+  "blen": 14,
+  "jp": "<1103>寂しガり屋",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2884,
+  "blen": 12,
+  "jp": "<1103>ぶっ飛び",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2896,
+  "blen": 14,
+  "jp": "<1103>自意識過剰",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2910,
+  "blen": 12,
+  "jp": "<1103>優柔不断",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2922,
+  "blen": 10,
+  "jp": "<1103>無邪気",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2932,
+  "blen": 10,
+  "jp": "<1103>無邪気",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2942,
+  "blen": 48,
+  "jp": "<1103>四「$「0「8「@「N「X「_「j「アトラス",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2990,
+  "blen": 8,
+  "jp": "<1103>達哉",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 2998,
+  "blen": 8,
+  "jp": "<1103>舞耶",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 3006,
+  "blen": 14,
+  "jp": "<1103>ミッシェル",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 3020,
+  "blen": 10,
+  "jp": "<1103>ギンコ",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 3030,
+  "blen": 6,
+  "jp": "<1103>淳",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 3036,
+  "blen": 12,
+  "jp": "<1103>ユッキー",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 3048,
+  "blen": 8,
+  "jp": "<1103>リサ",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 3128,
+  "blen": 22,
+  "jp": "敵に不意をつかれた!",
+  "zh": "遭到敌人偷袭!",
+  "skip": false
+ },
+ {
+  "off": 3150,
+  "blen": 24,
+  "jp": "<1103>先制攻撃のチャンス!",
+  "zh": "<1103>先发制人的机会!",
+  "skip": false
+ },
+ {
+  "off": 3174,
+  "blen": 20,
+  "jp": "<1103>の魔法を習得した",
+  "zh": "<1103>的魔法已习得",
+  "skip": false
+ },
+ {
+  "off": 3194,
+  "blen": 24,
+  "jp": "<1103>2ランクレベルアップ",
+  "zh": "<1103>等级上升2级",
+  "skip": false
+ },
+ {
+  "off": 3218,
+  "blen": 24,
+  "jp": "<1103>パラメータガ上昇した",
+  "zh": "<1103>能力值上升了",
+  "skip": false
+ },
+ {
+  "off": 3242,
+  "blen": 24,
+  "jp": "<1103>変異能力を身につけた",
+  "zh": "<1103>掌握了变异能力",
+  "skip": false
+ },
+ {
+  "off": 3266,
+  "blen": 26,
+  "jp": "<1103>これでよろしいですか?",
+  "zh": "<1103>这样可以吗?",
+  "skip": false
+ },
+ {
+  "off": 3292,
+  "blen": 24,
+  "jp": "<1103>潜在的な能力ガ発動!",
+  "zh": "<1103>潜在能力发动!",
+  "skip": false
+ },
+ {
+  "off": 3316,
+  "blen": 8,
+  "jp": "<1103>達は",
+  "zh": "<1103>们",
+  "skip": false
+ },
+ {
+  "off": 3324,
+  "blen": 16,
+  "jp": "<1103>達は全滅した",
+  "zh": "<1103>们全灭了",
+  "skip": false
+ },
+ {
+  "off": 3340,
+  "blen": 32,
+  "jp": "<1103>舞耶「火ガ・・火ガ怖い!!」",
+  "zh": "<1103>舞耶「火・・好怕火!!」",
+  "skip": false
+ },
+ {
+  "off": 3372,
+  "blen": 8,
+  "jp": "<1103>はい",
+  "zh": "<1103>是",
+  "skip": false
+ },
+ {
+  "off": 3380,
+  "blen": 10,
+  "jp": "<1103>いいえ",
+  "zh": "<1103>否",
+  "skip": false
+ },
+ {
+  "off": 3390,
+  "blen": 6,
+  "jp": "<1103>・",
+  "zh": "",
+  "skip": false
+ },
+ {
+  "off": 3396,
+  "blen": 14,
+  "jp": "<1103>逃げ出した",
+  "zh": "<1103>逃跑了",
+  "skip": false
+ },
+ {
+  "off": 3410,
+  "blen": 10,
+  "jp": "<1103>こけた",
+  "zh": "<1103>摔倒了",
+  "skip": false
+ },
+ {
+  "off": 3604,
+  "blen": 22,
+  "jp": "行動を選択して下さい",
+  "zh": "请选择行动",
+  "skip": false
+ },
+ {
+  "off": 3626,
+  "blen": 42,
+  "jp": "<1103>行動を変更するメンバーを選択して下さい",
+  "zh": "<1103>请选择要变更行动的成员",
+  "skip": false
+ },
+ {
+  "off": 3668,
+  "blen": 26,
+  "jp": "<1103>の行動を選択して下さい",
+  "zh": "<1103>的行动请选择",
+  "skip": false
+ },
+ {
+  "off": 3694,
+  "blen": 24,
+  "jp": "<1103>対象を選択して下さい",
+  "zh": "<1103>请选择对象",
+  "skip": false
+ },
+ {
+  "off": 3718,
+  "blen": 32,
+  "jp": "<1103>使用する魔法を選択して下さい",
+  "zh": "<1103>请选择要使用的魔法",
+  "skip": false
+ },
+ {
+  "off": 3750,
+  "blen": 36,
+  "jp": "<1103>使用するアイテムを選択して下さい",
+  "zh": "<1103>请选择要使用的道具",
+  "skip": false
+ },
+ {
+  "off": 3786,
+  "blen": 36,
+  "jp": "<1103>変更するペルソナを選択して下さい",
+  "zh": "<1103>请选择要更换的Persona",
+  "skip": false
+ },
+ {
+  "off": 3822,
+  "blen": 38,
+  "jp": "<1103>アナライズする悪魔を選択して下さい",
+  "zh": "<1103>请选择要分析的恶魔",
+  "skip": false
+ },
+ {
+  "off": 3860,
+  "blen": 32,
+  "jp": "<1103>3ポイントを振り分けて下さい",
+  "zh": "<1103>请分配3点能力点",
+  "skip": false
+ },
+ {
+  "off": 3892,
+  "blen": 46,
+  "jp": "<1103>行動順を入れ替えるメンバーを選択して下さい",
+  "zh": "<1103>请选择要调换顺序的成员",
+  "skip": false
+ },
+ {
+  "off": 3938,
+  "blen": 40,
+  "jp": "<1103>条件設定する合体魔法を選択して下さい",
+  "zh": "<1103>请选择要设条件的合体魔法",
+  "skip": false
+ },
+ {
+  "off": 3978,
+  "blen": 30,
+  "jp": "<1103>戦闘モードを選択して下さい",
+  "zh": "<1103>请选择战斗模式",
+  "skip": false
+ },
+ {
+  "off": 4008,
+  "blen": 28,
+  "jp": "<1103>作戦内容を選択して下さい",
+  "zh": "<1103>请选择作战内容",
+  "skip": false
+ },
+ {
+  "off": 4036,
+  "blen": 28,
+  "jp": "<1103>発動条件を選択して下さい",
+  "zh": "<1103>请选择发动条件",
+  "skip": false
+ },
+ {
+  "off": 4064,
+  "blen": 40,
+  "jp": "<1103>組み合わせ成立時に自動的に発動します",
+  "zh": "<1103>组合成立时自动发动",
+  "skip": false
+ },
+ {
+  "off": 4104,
+  "blen": 32,
+  "jp": "<1103>組み合わせ成立時に待機します",
+  "zh": "<1103>组合成立时待机",
+  "skip": false
+ },
+ {
+  "off": 4136,
+  "blen": 38,
+  "jp": "<1103>組み合わせガ成立しても発動しません",
+  "zh": "<1103>组合成立也不发动",
+  "skip": false
+ },
+ {
+  "off": 4174,
+  "blen": 26,
+  "jp": "<1103>各種設定をしてください",
+  "zh": "<1103>请进行各种设定",
+  "skip": false
+ },
+ {
+  "off": 4200,
+  "blen": 20,
+  "jp": "<1103>戦闘を開始します",
+  "zh": "<1103>开始战斗",
+  "skip": false
+ },
+ {
+  "off": 4220,
+  "blen": 44,
+  "jp": "<1103>戦闘行動の変更や<1120>情報の確認等を行います",
+  "zh": "<1103>变更战斗行动、<1120>确认信息等",
+  "skip": false
+ },
+ {
+  "off": 4264,
+  "blen": 34,
+  "jp": "<1103>敵悪魔とのコンタクトを試みます",
+  "zh": "<1103>尝试与敌方恶魔交涉",
+  "skip": false
+ },
+ {
+  "off": 4298,
+  "blen": 34,
+  "jp": "<1103>敵悪魔の詳細データを確認します",
+  "zh": "<1103>确认敌方恶魔详细数据",
+  "skip": false
+ },
+ {
+  "off": 4332,
+  "blen": 32,
+  "jp": "<1103>戦闘に関する環境を設定します",
+  "zh": "<1103>设置战斗相关环境",
+  "skip": false
+ },
+ {
+  "off": 4364,
+  "blen": 22,
+  "jp": "<1103>戦闘から退却します",
+  "zh": "<1103>从战斗中撤退",
+  "skip": false
+ },
+ {
+  "off": 4386,
+  "blen": 30,
+  "jp": "<1103>個人の戦闘行動を設定します",
+  "zh": "<1103>设定个人战斗行动",
+  "skip": false
+ },
+ {
+  "off": 4416,
+  "blen": 26,
+  "jp": "<1103>行動順序を入れ替えます",
+  "zh": "<1103>调换行动顺序",
+  "skip": false
+ },
+ {
+  "off": 4442,
+  "blen": 50,
+  "jp": "<1103>発見した合体魔法の確認と<1120>発動条件を設定します",
+  "zh": "<1103>确认已发现合体魔法<1120>并设定发动条件",
+  "skip": false
+ },
+ {
+  "off": 4492,
+  "blen": 40,
+  "jp": "<1103>ノーマル/シングルの切替えを行います",
+  "zh": "<1103>切换普通/单人模式",
+  "skip": false
+ },
+ {
+  "off": 4532,
+  "blen": 30,
+  "jp": "<1103>装備された武器で攻撃します",
+  "zh": "<1103>用装备的武器攻击",
+  "skip": false
+ },
+ {
+  "off": 4562,
+  "blen": 30,
+  "jp": "<1103>ペルソナの能力を使用します",
+  "zh": "<1103>使用Persona的能力",
+  "skip": false
+ },
+ {
+  "off": 4592,
+  "blen": 24,
+  "jp": "<1103>アイテムを使用します",
+  "zh": "<1103>使用道具",
+  "skip": false
+ },
+ {
+  "off": 4616,
+  "blen": 32,
+  "jp": "<1103>ペルソナの付け替えを行います",
+  "zh": "<1103>更换Persona",
+  "skip": false
+ },
+ {
+  "off": 4648,
+  "blen": 28,
+  "jp": "<1103>のステータスを確認します",
+  "zh": "<1103>的状态确认",
+  "skip": false
+ },
+ {
+  "off": 4676,
+  "blen": 28,
+  "jp": "<1103>攻撃せず防御に専念します",
+  "zh": "<1103>不攻击专心防御",
+  "skip": false
+ },
+ {
+  "off": 4704,
+  "blen": 24,
+  "jp": "<1103>行動設定を終了します",
+  "zh": "<1103>结束行动设定",
+  "skip": false
+ },
+ {
+  "off": 4728,
+  "blen": 44,
+  "jp": "<1103>すべてのメンバーの行動を「攻撃」にします",
+  "zh": "<1103>把全员行动设为「攻击」",
+  "skip": false
+ },
+ {
+  "off": 4772,
+  "blen": 26,
+  "jp": "<1103>この行動順で決定します",
+  "zh": "<1103>以此行动顺序决定",
+  "skip": false
+ },
+ {
+  "off": 4798,
+  "blen": 22,
+  "jp": "<1103>素早さ順に戻します",
+  "zh": "<1103>恢复速度顺序",
+  "skip": false
+ },
+ {
+  "off": 4820,
+  "blen": 42,
+  "jp": "<1103>キャンセルされない限り戦闘を継続します",
+  "zh": "<1103>不取消则持续战斗",
+  "skip": false
+ },
+ {
+  "off": 4862,
+  "blen": 50,
+  "jp": "<1103>敵・味方全員ガ一回ずつ行動後<1120>戦闘を中断します",
+  "zh": "<1103>敌我全员各行动一次后<1120>中断战斗",
+  "skip": false
+ },
+ {
+  "off": 4912,
+  "blen": 40,
+  "jp": "<1103>設定を終了し<1120>「戦闘開始」に戻ります",
+  "zh": "<1103>结束设定<1120>返回「战斗开始」",
+  "skip": false
+ },
+ {
+  "off": 4952,
+  "blen": 30,
+  "jp": "<1103>ステータス:人間+ペルソナ",
+  "zh": "<1103>状态:人+Persona",
+  "skip": false
+ },
+ {
+  "off": 4982,
+  "blen": 20,
+  "jp": "<1103>ステータス:人間",
+  "zh": "<1103>状态:人类",
+  "skip": false
+ },
+ {
+  "off": 5002,
+  "blen": 24,
+  "jp": "<1103>ステータス:ペルソナ",
+  "zh": "<1103>状态:Persona",
+  "skip": false
+ },
+ {
+  "off": 5084,
+  "blen": 18,
+  "jp": "にかかっています",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 5102,
+  "blen": 20,
+  "jp": "<1103>は瀬死の状態です",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 5122,
+  "blen": 30,
+  "jp": "<1103>ペルソナガ封じられています",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 5152,
+  "blen": 30,
+  "jp": "<1103>ペルソナガ封じられています",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 5182,
+  "blen": 20,
+  "jp": "<1103>SPガ足りません",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 5202,
+  "blen": 38,
+  "jp": "<1103>使用できるアイテムを持っていません",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 5240,
+  "blen": 32,
+  "jp": "<1103>他のメンバーガ降魔しています",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 5272,
+  "blen": 38,
+  "jp": "<1103>コンタクトできる状況ではありません",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 5310,
+  "blen": 32,
+  "jp": "<1103>退却できる状態ではありません",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 5342,
+  "blen": 28,
+  "jp": "<1103>!!!!!!!!!!!!",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 5370,
+  "blen": 28,
+  "jp": "<1103>相性ガ悪く降魔できません",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 5398,
+  "blen": 24,
+  "jp": "<1103>すでに降魔しています",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 5422,
+  "blen": 34,
+  "jp": "<1103>行動ガできる状態ではありません",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 45028,
+  "blen": 24,
+  "jp": "<1103>行動を選択して下さい",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 45052,
+  "blen": 34,
+  "jp": "<1103>コンタクト対象を選択して下さい",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 45086,
+  "blen": 42,
+  "jp": "<1103>コンタクトするメンバーを選択して下さい",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 45128,
+  "blen": 46,
+  "jp": "<1103>決定または組合せるメンバーを選択して下さい",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 45174,
+  "blen": 30,
+  "jp": "<1103>よろしければ決定して下さい",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 45204,
+  "blen": 38,
+  "jp": "<1103>コンタクトコマンドを選択して下さい",
+  "zh": "",
+  "skip": true,
+  "note": "strtbl SLUS_0_x 表区,由 apply_strtbl_slps 重建,freetbl 勿碰"
+ },
+ {
+  "off": 49728,
+  "blen": 32,
+  "jp": "<1103>答えられる状態ではありません",
+  "zh": "<1103>当前状态无法回答",
+  "skip": false
+ },
+ {
+  "off": 49760,
+  "blen": 28,
+  "jp": "<1103>話せる状態ではありません",
+  "zh": "<1103>当前状态无法交谈",
+  "skip": false
+ }
+]
