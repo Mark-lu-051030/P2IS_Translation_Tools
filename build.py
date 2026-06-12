@@ -172,6 +172,12 @@ def step_apply_tarot():
     step('4j4. 塔罗/魔法卡描述副本 (file1105主显示源+64-67残留, 查strtbl:64_0_*译文原位等长, apply_tarot)')
     run(['node', 'apply_tarot.mjs', 'apply'])
 
+def step_apply_naming():
+    step('4j6. 命名界面 (sub1 注10个简体字形 + file61 UI文本原位等长, 字源=file59 sub1 JIS字库)')
+    run(['python3', 'subfile1/inject_naming_glyphs.py'])
+    run(['node', 'subfile1/inject_naming_glyphs.mjs'])
+    run(['python3', 'subfile1/apply_naming.py'])
+
 def step_apply_field():
     if not os.path.exists(os.path.join(ROOT, 'out', 'field_text_zh.json')):
         return   # 还没翻字段文本就跳过
@@ -334,6 +340,7 @@ def main():
                 step_apply_affinity()
                 step_apply_tarot()
                 step_apply_musichall()
+                step_apply_naming()
                 step_apply_field()
         elif args.no_strtbl:
             print('\n[跳过] strtbl apply（隔离测试）')

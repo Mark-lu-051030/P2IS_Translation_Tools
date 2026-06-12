@@ -53,7 +53,7 @@ const size  = fileposdat.readUInt32LE(N * 8 + 4);  // 字节数
 | 文件号 | 文件名 | 内容 |
 |--------|--------|------|
 | **59** | — | **对话字体（LZSS 压缩，2 个 sub-file，每个解压 65520 字节）** ⭐（D1 扩容后已搬到 ISO 末尾 sector 294186） |
-| 86 | F0086.BIN | 裸未压缩字库（格式同 file 59 解压后）。**对话不读它（读 file 59）；但命名界面等非对话画面读 file 86**——`inject_font_f86.py` 同步中文字形进去 |
+| 86 | F0086.BIN | 裸未压缩字库 = **file59 sub0 的逐字节副本**（100% 相同）。对话不读它（读 file 59）；⚠ 旧结论"命名界面读 file86"已被哨兵实验推翻——**命名界面 UI 文本读 file59 sub1（JIS 字库）**，file86 真实用途待查（inject_font_f86 同步保留,无害） |
 | 3 / 4 | — | 战斗/剧情脚本（**RLE 压缩**），觉醒/変異等战斗事件对话 |
 | 77 | — | 多 sub 归档：**Persona 変異台词** + NPC 对话（tc 链式定位，白屏案发现场） |
 | 92 | — | 事件系统消息（宝箱"发现/获得"、效果结束等，raw 区） |
@@ -198,14 +198,14 @@ Items 格式：
 
 ### 层级 7：字体文件（文件 59，sub-file 0）⭐
 
-> **⚠️ 重要修正**：之前以为字体在 `F0086.BIN`（文件 86），实际**对话字体在文件 59 sub-file 0**（LZSS 压缩），不是 86。详见"五、踩过的坑"中的字体定位事件。**再修正**：file 86 也不是全无用——**命名界面等非对话画面读的就是 file 86**（裸字库），所以 `inject_font_f86.py` 要把中文字形同步进去。
+> **⚠️ 重要修正**：之前以为字体在 `F0086.BIN`（文件 86），实际**对话字体在文件 59 sub-file 0**（LZSS 压缩），不是 86。详见"五、踩过的坑"中的字体定位事件。**再再修正**：file 86 = file59 sub0 的逐字节副本，file86 真实读取方来自何处目前未知。⚠ 旧结论"命名界面读 file86"已被 2026-06-11 哨兵实验彻底推翻——**命名界面 UI 文本实际读 file59 sub1（独立 JIS 序字库）**，见 sub1 注记及"五"。`inject_font_f86.py` 同步保留（无害，防万一有其他界面读）。
 
 **文件结构：**
 
 ```
 文件 59（archive，2 个 sub-file）:
   sub-file 0:  LZSS 压缩，解压后 65520 字节  ← 对话字体源
-  sub-file 1:  LZSS 压缩，解压后 65520 字节  ← 备用/异体字（用途待确认）
+  sub-file 1:  LZSS 压缩，解压后 65520 字节  ← **独立 JIS 序全字库（命名界面 UI 文本字源，2026-06-11 哨兵实验实锤）**
 ```
 
 **解压后的格式与 F0086.BIN 完全相同：**
@@ -289,6 +289,7 @@ P2IS_Translation_Tools/
 ├── out/          ← 生成的输出。⚠ gitignore 白名单制：只提交最终译文 out/*_zh.json，
 │                    其余(scripts/, scripts_zh/, string_table/, battle/, bisect/ 等)均可由 build 再生
 ├── verify/       ← 验证/调试脚本
+├── subfile1/     ← 命名界面工具（dump_jisfont.mjs / inject_naming_glyphs.py+mjs / apply_naming.py）
 ├── tools/        ← 一次性工具（restore, 单字注入示例等）
 ├── experiments/  ← 历史实验脚本（已知坏的/过时的，留作教训）
 └── artifacts/    ← 生成的产物（PNG 预览、提取的 bin），gitignored
@@ -298,7 +299,7 @@ P2IS_Translation_Tools/
 
 | 文件 | 作用 | 状态 |
 |------|------|------|
-| **`build.py`** | **一键完整管道**：还原 ISO → D1（patch 描述符 + 搬 file 59 + 注字体 + 同步 file 86）→ 编码 zh/strtbl → apply（脚本按 file 分组 + strtbl + SLPS + savemenu + mainmenu + nametable + freetbl 三表 + **maptbl 地图区域/房间名 + citymap 城市图地点标签 + field 字段文本**）→ 修 ECC → 报告。`SKIP_FIELD=1` 跳过字段回插（二分调试用） | ⭐ 主入口 |
+| **`build.py`** | **一键完整管道**：还原 ISO → D1（patch 描述符 + 搬 file 59 + 注字体 + 同步 file 86）→ 编码 zh/strtbl → apply（脚本按 file 分组 + strtbl + SLPS + savemenu + mainmenu + nametable + freetbl 三表 + **maptbl 地图区域/房间名 + citymap 城市图地点标签 + field 字段文本 + naming 命名界面**）→ 修 ECC → 报告。`SKIP_FIELD=1` 跳过字段回插（二分调试用） | ⭐ 主入口 |
 | `apply_maptbl.mjs` | 翻译 map 97-136 sub0 头部的**区域名（左上角第一行）+ 房间名（第二行）**。原位等长替换 + **`compress_to_size` 精确填满原始槽重压**（tc=op 枚举/解压均正确，修了 padding 补零致进图黑屏的坑，见"四、踩过的坑"）。房间名表是 **16-uint16 固定宽记录**（名字左对齐 + `{1000}` 填充 + `·`/`」` 分隔符，在 sub0 中段与瓦片混排），用 **roomLut 查表 + 记录结构校验双重过滤** 精准定位（实测 95 处 0 瓦片误命中）。译表：`map_names_zh.json`（区域名审定）/ `strtbl 138_0_5`+`room_names_zh.json`（房间名） | ✅ |
 | **`apply_citymap.mjs`** | 翻译**城市俯视图地点标签**（如 スマル・プリズン→苏摩鲁监狱、廃工場→废工厂）。标签按区分散在 **file 1112-1116 未压缩区**（街中/平坂/夢崎/青華/港南区各一簇，同簇重复 2-3 份），是 og 码 + **`0x1000` 终止符**（非 RET 非字符串表 → 字段提取漏了；⚠`0x0000` 会渲染成「不能当填充）。**偶对齐滑窗逐字符匹配 + 接受一码多形**（如 ヨ=879/543，预编码取末码+indexOf 会漏匹配）+ 后跟 0x1000 → 原位换 CN+0x1000终止+填充。`LABELS` 字典可扩展 | ✅ |
 | `apply_affinity.mjs` | **Persona属性抗性句**(file47/69/70/71/1109 五副本)：模板句典(ATTR×动作)+原位等长(ct码+全角空格填充),控制码/指针表零改动。`extract`/`apply` 双模式。⚠ parseEntries 条目尾 p=q-2 防隔条漏 | ✅ |
@@ -306,14 +307,14 @@ P2IS_Translation_Tools/
 | `apply_battlenames.mjs` | 战斗面板名(file1129 名字簇)原位翻译——数据正确但游戏不读(RAM 另有源)。**2026-06-11 已从 build 摘除、file1129 还原原版**(人名乱套排查时消变量,后证实乱套真凶是码表漂移) | ⛔已摘除 |
 | **`extract_field_text.mjs`** | 提取主管道漏掉的**字段文本**（外景对话 file 1075、装备/简介/传闻 等，散在非-scene_script 自定义格式文件）。读全文件表(0x2400, 真实 1144 文件)、有界 sub 枚举、RET 定界、CJK 密度过滤、内容级去重 → `out/field_text.json` | ✅ |
 | **`clean_field_text.py`** | 清洗字段文本：过滤垃圾(单字符重复噪音)、按唯一 jp 去重 → `out/field_to_translate.json`(翻译输入) + `out/field_text_clean.json`(全部出现位置) | ✅ |
-| **`translatable/translate_field.py`** | 字段文本 DeepSeek-R1 批量翻译（复用角色名锁定，⚠Maya=**舞耶**非麻耶；保留 `<cXX/>`+`\n`；partial 按唯一 id 命名；`--merge` 合并 + NAME_FIX 归一化；`--retrans` 重译太长条目更短） | ✅ |
+| **`translatable/translate_field.py`** | 字段文本 DeepSeek-R1 批量翻译（复用角色名锁定，⚠Maya=**舞耶**非麻耶；保留 `<cXX/>`+`\n`；partial 按唯一 id 命名；`--merge` 合并 + NAME_FIX 归一化；`--retrans` 重译太长条目更短）。⚠ **`--merge`(含每次跑完自动触发的)是"从 clean 重建+按 jp 回填 partials"——会清掉 field_text_zh 里所有手工修复**(新增条目/偏移修正/speaker批修/直接编辑,2026-06-12 实证翻车)。手工编辑后必须 commit;重新合并一律用 `field_consolidate.py`(HEAD 基底+只填空白) | ✅ |
 | **`apply_field.mjs`** | 字段文本回插：原位等长(zh码+**RET紧跟zh**+全角空格填到原字节数；padding必须在RET后否则游戏逐字渲染空格卡顿)，**从 WORK 读**保留前面 apply、**跳过结构性条目**、未注册表文件按jp内容重建变长(不缩短)、绕过 cdimage 881 上限直接扇区写。**含归档子文件路径**：file 1112-1117/77 多sub归档里~1013条NPC对话(解压→原位改→**`compress_to_size` 精确填满原 tc** 保留头tag塞回原槽——⚠ 这类归档无偏移表、游戏按 tc 链式定位 sub，tc 短一字节后续 sub 全错位=変異白屏真凶，2026-06-11 根治)。tag比对忽略装饰码`<c20/>`(救回93条描述)；encodeText把非cXX的`<占位符>`(如`<舞耶>`)当字符。`verify`/`dry`/`apply`/`dumptoolong`(导出太长/标签不符/缺字) | ✅ |
 | `shorten_toolong.py` | 把太长字段译文缩到≤budget(译者审定的等价缩写规则+逐条OVERRIDE,保意减字只裁多出部分)→合回 field_text_zh.json。太长 760→14 | ✅ |
 | `fix_misschar.py` | 字库没有的罕用字(频率1被丢)在译文里换常用同义词(摩羯座→山羊座/馒头→包子/内讧→内斗)，不占字库。缺字 22→0 | ✅ |
 | `patch_subfile_table.py` | **D1 扩容 Step 1**：patch SLPS sub-file 描述符表（Desc1+Desc2 22→**32** sectors，字段文本字多扩到 32；Desc1 实际由 set_subfile0_size 动态精确设） | ✅ |
 | `relocate_file59.py` | **D1 扩容 Step 2**：把 file 59 搬到 ISO 末尾 + sub-file 1 在 **32** sectors offset；同时更新 FILEPOS.DAT 和 PVD | ✅ |
 | `inject_chinese_font.py` | **D1 字体注入**：读 working ISO file 59 → **按 `codetable_pinned.json` 钉死布局**复现全部槽位（新字只进腾退槽,equiv 日文字过滤出队列）→ **`compress_optimal` 重压缩**(挤进 32 sectors) → 修 ECC + Desc1 动态 N。扫 all_translatable + map/room/**field_text_zh** + **名表/UI zh(提权)**。⚠ decompressed 65520 锁死(槽≤3575)，装不下的极罕用字丢弃(out/skipped_chars.txt) | ✅ |
-| `inject_font_f86.py` | **file 86 字体同步**：命名界面等画面读 file 86（裸未压缩字库，非 file 59）；把注入 file 59 的同批中文字形（codetable≠og 的槽）写进 file 86 | ✅ |
+| `inject_font_f86.py` | **file 86 字体同步**：file 86 = file59 sub0 逐字节副本，真实读取方未知（命名界面读 sub1 不读 file86）。保留同步以防其他界面引用，把注入 file 59 的同批中文字形（codetable≠og 的槽）写进 file 86 | ✅ |
 | `encode_zh.py` | 把 script 翻译编码成字符码 items（含 META 段处理 + 全角标点 alias），输出 `out/scripts_zh/` | ✅ |
 | `encode_strtbl.py` | 把 strtbl 翻译编码成 items，输出 `out/strtbl_zh/`（文件名 regex 支持 SLUS 前缀=file 0） | ✅ |
 | `apply_zh.mjs` | 把编码好的对话写回 ISO。`<file>`（不带 sub）一次处理该 file 所有 sub 合并 patch（**必须**，否则多 sub 互相覆盖）。**RLE 压回 RLE、LZSS 压回 LZSS，均经 `compress_to_size` 精确填满原槽**（保留原 byte[1] subtype + 无零 padding，觉醒白屏/对话卡死双修复），relocate 三级降级，自动 ECC | ✅ |
@@ -328,6 +329,9 @@ P2IS_Translation_Tools/
 | `lookup_char.py` | 字符 ↔ slot 互查（codetable 调试） | 工具 |
 | `name_fix.py` | 一次性：批量替换 all_translatable 里指定人名（对齐 PSP 译名），写 `.namebak` 备份 | 工具 |
 | `audit_untranslated.py` / `scan_untranslated.py` | 游离区聚簇扫未翻文本。**实验性**：纯文本表可靠，码密集区误报多（见 memory），长尾靠玩家反馈补 | 实验 |
+| **`field_consolidate.py`** | **安全合并工具**（替代危险的 `translate_field.py --merge`）。以 git HEAD 的 `field_text_zh.json` 为基底（保留全部手工修复）→ 删 file61 伪文本 → 只填空白 zh 条目 → 写回。⚠ 手工编辑后必须先 `git commit field_text_zh.json`，本脚本永远以 HEAD 为真相源 | ✅ |
+| **`bisect_files.py`** | **二分还原工具**：`revert N` 快照当前 bin 到 `out/bisect/fileN.bin` 并写回原版，`restore N` 写回快照，`status N` 比对。用于二分定位哪个 apply 步骤引入崩溃（変異白屏案主力工具） | 工具 |
+| `import_platform.py` | 把平台校对稿 `{id,jp,translation}` 按 id 前缀路由回 11 类源文件（script/strtbl→all_translatable 按 `:pN` 页号精确定位、field、freetbl 各表、map/room_names）。四道安检（jp 一致/标签⊆原文/原位等长类超长跳过/缺页号拒写），干跑报告+`--apply` 自动备份 | ✅ |
 | `fix_ecc.py` | 修复 ISO ECC 校验码（各 apply 内部已调用） | ✅ |
 | `export_translatable.py` | 生成 `all_translatable.json`（含 jp / zh / meta_jp / meta_zh 字段）。**用 codetable_og.json 渲染 JP** 防止被字体注入后的中文 slot 污染 | ✅ |
 | `export_all_dialog.py` | （历史）纯文本对话提取；已不在主管道里 | 备用 |
@@ -338,6 +342,15 @@ P2IS_Translation_Tools/
 | `all_translatable.json` | 翻译主文件，每条有 id / pages[jp,zh] / meta_jp / meta_zh | ✅ 翻译完成 |
 | `conf.json` | 本地配置（**gitignored**）。复制 `conf.json.example` 起步，必须填 `iso` 和 `iso_backup` | 本地配置 |
 | `fusion-pixel-12px.otf` | 像素中文字体（OFL-1.1，[TakWolf/fusion-pixel-font](https://github.com/TakWolf/fusion-pixel-font)），用于渲染 12×12 bitmap | ✅ |
+
+### `subfile1/` 命名界面工具
+
+| 文件 | 作用 |
+|------|------|
+| `dump_jisfont.mjs` | 读 file59 sub0+sub1，位图匹配建 `codetable_jis.json`（JIS 槽号↔字符对应表）。sub1 在 D1 layout 偏移 65536（32 sectors offset） |
+| **`inject_naming_glyphs.py`** | 用 fusion-pixel-12px 渲染 10 个简体专属字形（为换汉确请输这选假个）→ `naming_glyphs.json` + `codetable_jis_ext.json`。7 字进牺牲槽（file61 全文从未引用的旧字形），3 字进空白槽，控制压缩膨胀在 103B 预算内 |
+| **`inject_naming_glyphs.mjs`** | 把 `naming_glyphs.json` 字形写进 WORK file59 sub1（解压→改字形→`compress_to_size` 精确填满原 tc → round-trip 校验 → 写回+ECC）。幂等 |
+| **`apply_naming.py`** | 命名界面 UI 文本写盘：file61 偏移 20480（sector 66686），u16LE JIS 槽序列原位等长替换。16 条字符串（平假名/片假名/汉字/英数字/通称/完成/切换提示/确认框是否）。短译文用早终止符（0x1101+0x1103）使 UI 按真实字数居中。`restore` 参数还原备份 |
 
 ### `pylib/` Python 共享助手
 
@@ -532,6 +545,7 @@ node verify_full.mjs
 | **地图区域名原位改名重压"超容量"塞不回**（2026-06-03） | 不是名字变长——是 `lib/lzss.mjs` 贪心 `compress` 比原版游戏压缩器差 ~0.4%：原样不改重压就胀 +22~+78 字节。map 文件 5~6 sub 紧贴、文件尾 0 slack，胀 1 字节就溢出 | `lib/lzss.mjs` 加 `compress_optimal`（DP 全局最优解析），比原版小 12~211 字节 → 名字轻松塞回，不用搬文件。**先做无修改 round-trip 比原大小**就能区分"压缩器差"还是"数据变大" |
 | **进外景地图黑屏死机**（廃工場/ム大陸 等外景图，2026-06-08 公测后玩家报） | `apply_maptbl` 重压地图 sub0 后把压缩头 tc（offset 4）写成 **padding 后的槽大小 `op`** 而非真实压缩长度（`compress_optimal` 压完再补零到 op）。map 文件多个 sub **紧密排列、非扇区对齐**，游戏按 tc 读进尾部零填充 → 解压出垃圾 → 进图加载即黑屏死机（BGM 还在、左上角区域名能显示、场景全黑） | 改用 `lib/lzss.mjs` 新增的 `compress_to_size(d, 0xc, op)`：DP 最优压缩后用**有效 token 精确填满到原始槽大小**（无零填充），tc=op 时归档枚举 + 解压双双正确。⚠ 当时 apply_field 用的"tc=真实长度 + 槽内补零"被认为是替代方案——**后来证明它正是変異白屏真凶**（归档按 tc 链定位 sub，tc 变短链全错位），2026-06-11 apply_field 也改为 compress_to_size 精确填满原 tc。结论：**一切归档原位重压，tc 一字节都不能变** |
 | **発布盘没带上修复**（v0.3.0 玩家继续报白屏，2026-06-11） | v0.3.0 的 bin 是 20:16 build 的，RLE `compress_to_size` 修复代码 20:21 才存盘——修复根本没上船 | 发版前 `stat` 比对 WORK bin mtime vs 全部 lib/apply 代码 mtime；修复后单独重跑 `apply_zh 3/4` 落盘 |
+| **`translate_field.py --merge` 清空手工修复**（2026-06-12 实证） | `--merge` 实现是"从 clean 重建 + 按 jp 回填 partials"——所有不来自 partials 的修复（布袋/宝箱 12 条/file77 偏移/speaker 批修/直接编辑）全部消失 | 手工修复后立刻 `git commit field_text_zh.json`；合并一律用 `field_consolidate.py`（HEAD 基底+只填空白）；不再直接跑 `--merge` |
 | **変異/融合白屏**（选変異→动画白屏，2026-06-11 调一整天） | P2 归档**没有偏移表，游戏按每个 sub 头的 tc 链式找下一个 sub**（组间 0x800 对齐兜底）。apply_field 归档路径重压后把 tc 写成变短的真实长度 → **同组后续 sub 全部错位** → 変異台词（file77 链条深处的小 sub）读到错位垃圾当压缩流解压 → 跳进垃圾执行白屏。RAM 取证：EPC 区域是"错位 1 字节的类 MIPS 垃圾" = 链错位指纹 | apply_field 归档重压改 `compress_to_size(dc, 12, 原tc)` **精确填满原 tc，链条逐字节不变**；写了链验证器（walk WORK vs 原版逐 sub 比对 off/tc/uc/type + 输入有界解码行为）。⚠ 三轮二分还原战斗文件全白费——変異台词在 field 管道(file77)不在战斗文件，**二分前必须列全"谁写过这个数据"** |
 | **提取器吞 sub 头**（同日发现的第二颗雷） | extract_field_text 的 raw 扫描把 sub 头 8 字节吞进文本单元开头（低码渲染成「，如 `field:77:0x4552` 的 jp 前缀 `「」「r「`=风魔小太郎），翻译删了前缀，apply 原位写回时中文从头部位置盖起 → sub 头被毁、链从此断裂 | 偏移 +吞掉的字节数、jp 去前缀（0x4552→0x455c 已修）。凡归档文件上 jp 开头有「类垃圾的原位条目都是嫌疑 |
 | **战斗交涉人名乱套**（リサ→雅 等，v0.3.0 玩家报，2026-06-11） | 游戏开档时把称呼字符串以**字符码**写进记忆卡，而 inject 按词频分配新字槽位、词频每版都变 → **新分配字槽位每版洗牌**（v0.2→v0.3: 丽2179→导、莎→羁、银→败、荣→卢）。og 共用字天然稳定所以 达哉/米切/舞耶 没事——乱的恰是简体专用字。盘上名字表/SLUS表/指针全是好的，锅在"存档持久化码"与"码表跨版本漂移"之间 | `codetable_pinned.json`（=git 52314b0 的 v0.2 公测码表）**钉死布局**：inject 完整复现其 slot→字，新字只进**腾退槽**（已弃用字让位），成功后演进结果写回 pinned → 永久稳定。**存档会持久化的编码空间 = ABI，必须钉版本兼容**。⚠ 队列须过滤 equiv 日文字（時/闘 由别名映射满足，不滤会挤占稀缺腾退槽） |
@@ -558,7 +572,7 @@ node verify_full.mjs
 - ✅ **end-to-end 验证**：游戏从启动到主菜单到剧情/战斗全程中文（DuckStation tab 加速）
 - ✅ **觉醒/战斗白屏根治**（2026-06-01）：真因是 apply 把 RLE 脚本(file 3/4)重压成 LZSS 改了 `byte[1]` subtype → 引擎走错处理白屏。`lib/rle.mjs` 加 RLE `compress`，RLE 文件翻译后保持 byte[1]=1、与原版结构同构。已游戏内验证觉醒/战斗正常。详见"四、踩过的坑"+"六"bug #1
 - ✅ **游离区 UI/名表**（2026-05-31）：道具/Persona/技能/恶魔名主表（sector 200，`nametable_strtbl.py`，~1639条）、角色姓名/昵称（221）、交涉动作+战斗UI（271039）、设置菜单（271964）—— `freetbl.py` 通用游离区引擎（注册表驱动），原位等长替换不碰指针表；带参控制码条目整条 skip 防崩
-- ✅ **file 86 字体同步**（`inject_font_f86.py`）：命名界面等画面读的是 file 86（裸未压缩字库，非 file 59），把注入 file 59 的同批字形同步进去
+- ✅ **file 86 字体同步**（`inject_font_f86.py`）：file86 = file59 sub0 逐字节副本，真实读取方未知（⚠ 旧结论"命名界面读 file86"已被 2026-06-11 哨兵实验推翻）；保留同步以防其他界面引用
 - ✅ **字体动态 N + 主菜单居中**：`patch_subfile_table.set_subfile0_size` 按实际重压缩大小设 SLPS Desc1（修 UI 精灵错乱）；`mainmenu_strtbl.py` 短菜单项前补全角空格居中
 - ✅ **左上角地点名（区域名+房间名）**（2026-06-03）：场景面板两行名字在 **map 文件 97-136 sub0 头部**（区域名=开头 og 码串；房间名=固定宽记录表 `[标志∅/」][名字][{1000}填充]`）。`apply_maptbl.mjs` 原位等长替换：区域名用人工审定表 `map_names_zh.json`（对齐对话正文 希巴尔巴/卡拉科尔，专名用户拍板），房间名取 `strtbl 138_0_5` 现成译法 + `room_names_zh.json` 覆盖个别超长（駐輪場→停车场、階段→楼梯）。边界规则（前∈{0,1} 后≥0x1000）防误伤瓦片数据；40 个图区域名 + 110 处房间名全写回
 - ✅ **最优 LZSS 压缩器**（2026-06-03）：`lib/lzss.mjs` 的 `compress_optimal`（DP 全局最优解析，token 格式不变游戏可解）。原贪心 `compress` 比原版游戏压缩器差 ~0.4%，导致紧实 archive（map 文件 5~6 sub 紧贴、0 slack）原位改名重压必膨胀 → 装不回。最优解析比原版**小 12~211 字节**，彻底拆掉压缩墙，且对话/字体链也受益（更多 headroom）。每个 map ~50-150ms，写回前强制 round-trip 校验防损坏
@@ -592,12 +606,16 @@ node verify_full.mjs
 - ✅ **file1129 战斗名字簇写入摘除**：冷启动验证游戏不读、留着是变量，已还原原版字节并从 build 注释掉
 - ✅ **宝箱/效果消息补漏 12 条**（2026-06-11，玩家报"日文后跟同样的中文"）：开宝箱是两条消息——「見つけた」(发现)→「手に入れた」(获得)，file92 事件区成对存放，提取器把"発现版"连同事件代码吞成一单元被假名过滤丢弃。补 見つけた×6(个/张/日元)+已调查过+空箱+効果終了×2；顺手修 円手に入れた 译文多余 `<ce:1/>` 标签(一直被标签安检拦下没进游戏)
 - ✅ **说话人单元全盘审计探测器**（2026-06-11）：`<c1d:11/>名字<c1d:1/>` 是确定性结构特征——全盘 1144 文件(raw+解压)扫此模式 + "og 解码含假名≥3 = 漏翻"判定，**误报零**。修完宝箱后复扫 = 0 条剩余，"带说话人的对话"这一整类证明全清。剩余漏网只可能在无说话人的纯 UI 串里
+- ✅ **命名界面 UI 文本全汉化**（2026-06-11）：字源实锤 file59 sub1（独立 JIS 序字库，哨兵实验确认）。10 个简体专属字形（为换汉确请输这选假个）注入 sub1 牺牲槽（file61 全文未引用）+ 3 空白槽，压缩预算仅 103B 精确填满。file61（sector 66686）16 条 UI 字符串原位等长替换：平假名/片假名/汉字/英数字/通称/完成/各切换提示/确认框。早终止符（0x1101+0x1103）实现短译文正确居中，确认框显示"是/否"。管道：`inject_naming_glyphs.py` → `inject_naming_glyphs.mjs` → `apply_naming.py`（集成 build 4j6 步）
+- ✅ **字段文本补充 + file61 清理**（2026-06-12）：再跑 DeepSeek-R1 补齐外景对话等 366 条，12615 条全落盘，缺字归零。5 条缺字换同义词（汹涌→满溢/床→被窝/馒头→包子/俯瞰→俯视/耳垢→耳屎）。file61 JIS 数据被字段提取器误读为文本（应用后英→狸数字），清除全部 `field:61:0x*` 条目
+- ✅ **安全合并工具 `field_consolidate.py`**（2026-06-12）：替代危险的 `translate_field.py --merge`（会从 clean 重建丢弃全部手工修复——布袋/偏移修正/speaker 批修等，2026-06-12 实证翻车一次）。以 HEAD git 提交为基底 → 删 file61 伪文本 → 只填空白 zh → 写回。手工编辑后必须先 commit
 
 **发布策略（2026-06-05 决定）**：主体（剧情/对话/菜单/道具/技能/装备/简介/外景NPC/城市图，14000+条）已 100% 中文，**发公开测试版 → 随玩家反馈出补丁迭代**。剩余是散落边角，只在特定路线/界面才显示，单人审计找不全（玩家走不同路线几天能列全清单）。下列为 **v1 已知问题**，列入发布说明：
 
 - 🚧 **部分菜单/UI 文本**（持续收口）：2026-06-10 已扫掉一大片（战斗UI区216条/属性抗性句510段/塔罗卡描述343条/塔罗Arcana名22条，见"五"），剩余散落项随玩家反馈补。`<c101>` 定界 UI 串提取扩展仍是待办
 - ⛔ **战斗面板/状态页角色名**（2026-06-10 深查后搁置）：ミッシェル/ギンコ/リサ・シルバーマン 等。**数据层面已全部翻好**（SLUS_0_1 strtbl 写入验证；file1129 写入已摘除），但游戏运行时不读它们——冷启动+记忆卡+新战斗仍日文，RAM 0x8009F608 的名字数据另有初始化源。需 DuckStation 调试器断点/Ghidra 追。⚠ 别与已修复的**交涉菜单人名乱套**混淆——那是码表漂移 vs 存档持久化码（2026-06-11 钉死根治，见"四/五"），这条是"显示日文"不是"显示乱码"
-- ⛔ **ASCII 西文字体类（暂不可翻）**：①命名界面（独立 JIS 原版字库 + 自有编码 overlay）②**塔罗 Arcana 名列表**（2026-06-10 查明：读 sector 198 的 11 字节定宽 ASCII 名表 `MAGICIAN∅∅∅PRIESTESS…`+ROD/CUP，渲染用 LV/EXP/NEXT 同款西文粗体美术字，**无中文字形**，改字节=乱码）③状态页全名（疑似同类）。共同点：不走 12×12 中文字库，需 Ghidra 改渲染路径才能根治。**塔罗列表保留英文**（描述栏已是【EMPEROR(皇帝)】中英对照，可接受）；nametable 的 22 条中文译名留存（若有其他界面走名表会显示中文）
+- ✅ ~~命名界面~~ **已完成**（2026-06-11 实现，见"五"已完成列表）
+- ⛔ **ASCII 西文字体类（暂不可翻）**：①**塔罗 Arcana 名列表**（2026-06-10 查明：读 sector 198 的 11 字节定宽 ASCII 名表 `MAGICIAN∅∅∅PRIESTESS…`+ROD/CUP，渲染用 LV/EXP/NEXT 同款西文粗体美术字，**无中文字形**，改字节=乱码）②状态页全名（疑似同类）。共同点：不走 12×12 中文字库，需 Ghidra 改渲染路径才能根治。**塔罗列表保留英文**（描述栏已是【EMPEROR(皇帝)】中英对照，可接受）；nametable 的 22 条中文译名留存（若有其他界面走名表会显示中文）
 - ⚠️ **个别迷宫子区域名**（如 シバルバー中心部）：像城市图标签，发现一个往字典加一个，后续补丁
 - ⚠️ **标签不符残余 60 条**：多是 file-84 内部事件触发标签(獅子宮戦闘前，玩家不可见)，留日文
 - ⚠️ 对话框三角 + L1/L2 图标 + HP/¥/TIME 颜色 — 非文字 UI 元素（cosmetic）
