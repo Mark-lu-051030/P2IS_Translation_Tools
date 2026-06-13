@@ -38,6 +38,12 @@ CODETABLE     = os.path.join(ROOT, 'codetable.json')      # 输出（被本脚�
 CODETABLE_OG  = os.path.join(ROOT, 'codetable_og.json')   # 输入：原始日文 codetable（基线）
 TRANS_JSON    = os.path.join(ROOT, 'all_translatable.json')
 FIX_ECC    = os.path.join(ROOT, 'fix_ecc.py')
+_kana_path = os.path.join(ROOT, 'out', 'free_kana_slots.json')
+if os.path.exists(_kana_path):
+    FREE_KANA_SLOTS = set(json.load(open(_kana_path)))
+else:
+    FREE_KANA_SLOTS = set()
+    print('警告: 未找到 out/free_kana_slots.json，假名槽不会被优先使用')
 FONT_FILE  = 59         # 文件 59 = 对话字体 archive
 FONT_SUB   = 0          # sub-file 0 = LZSS 压缩的字形数据
 # 槽位分配策略：D1 扩容方案
@@ -233,6 +239,8 @@ def main():
     #   - 不够再填扩展区 slot (>2574)：
     #     bitmap 替换零，每字膨胀 ~14 字节
     OG_MAX = 2574
+    kana_free = sorted([s for s in FREE_KANA_SLOTS if s not in used_slots], reverse=True)
+
 
     # 收集 og kanji slot (可覆盖，按 slot 从高到低)
     og_kanji_slots = sorted(
@@ -240,7 +248,8 @@ def main():
          if int(k) > ALLOC_BOTTOM and int(k) <= OG_MAX
          and isinstance(v, str) and len(v) == 1
          and ('一' <= v <= '鿿' or '㐀' <= v <= '䶿')
-         and int(k) not in og_reused_slots],
+         and int(k) not in og_reused_slots
+         and int(k) not in FREE_KANA_SLOTS],
         reverse=True
     )
     # 扩展区 slot：⚠ 必须从低位 2575 往上紧凑分配！
@@ -251,8 +260,12 @@ def main():
     MAX_SAFE_SLOT = (65520 - 0x480) // 18 - 1   # = 3575 (槽s占[0x480+18s,0x480+18(s+1)), 整除时必须-1; 3576曾溢出致"秋"乱码)
     ext_slots = list(range(OG_MAX + 1, MAX_SAFE_SLOT + 1))   # 2575,2576,...,3575 低到高
 
+    kana_free = sorted(
+        [s for s in FREE_KANA_SLOTS if s not in used_slots],
+        reverse=True   # 从高到低排，优先用高位假名槽，把低位留给极小概率的紧急需求（无实质影响）
+    )
     # 合并：先 og kanji（替换日文，不增 decompressed），再扩展区（从低位填，最小化 decompressed）
-    free_slots = og_kanji_slots + ext_slots
+    free_slots = kana_free + og_kanji_slots + ext_slots
 
     new_alloc_count = 0
     new_og_count = 0
@@ -314,8 +327,9 @@ def main():
             final.pop(s)
         ours = {s: ch for s, ch in final.items() if ct_og.get(str(s)) != ch}
         pin_chars = set(final.values())
+        pinned_kana_free = sorted(FREE_KANA_SLOTS, reverse=True)
         # 腾退: 我们的槽里、当前译文已不再使用的字(名表关键字必在 needed, 天然不可腾退)
-        evictable = sorted(s for s, ch in ours.items() if ch not in needed_set)
+        evictable = pinned_kana_free + sorted(s for s, ch in ours.items() if ch not in needed_set)
         # 新字队列: 排除 equiv 可别名满足的日文字(時→时 等, encode_zh 会映射到 CN 槽,
         # 不排除的话它们按高频挤占腾退槽, 真正的新字反而进不来)
         _eq = {}
