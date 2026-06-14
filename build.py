@@ -185,7 +185,7 @@ def step_apply_field():
         print('\n[跳过] 字段文本回插 (SKIP_FIELD=1, 仅注字段字体不 apply, 用于二分定位)')
         return
     step('4k. 把字段文本译文写回 ISO (场景对话/装备说明等, apply_field 原位等长, 含 file>881)')
-    run(['node', 'apply_field.mjs', 'apply'])
+    run(['node', 'apply_field.mjs', 'apply', ])
 
 def step_apply(only=None):
     """对 out/scripts_zh/ 里每个文件跑 apply_zh.mjs。
@@ -315,7 +315,7 @@ def main():
             step_d1_subfile_patch()    # D1: patch SLPS 描述符表
             step_d1_layout()           # D1: file 59 搬末尾 + 30-sector layout
             step_inject_font()         # 注入中文（含扩展 slot）
-            step_inject_font_f86()     # 同步到 file 86（命名界面等读的独立字库）
+            # step_inject_font_f86()     # 同步到 file 86（命名界面等读的独立字库）
         else:                   print('\n[跳过] 字体注入')
         if not args.no_encode:
             step_encode_zh()

@@ -134,7 +134,8 @@ FINAL_NAMES = {
   "ロンギネス1": "朗基努斯1",
   "メタル・マム": "合金妈妈",
   "ボロンティック": "波隆提克",
-  "男子生徒": "男学生"
+  "男子生徒": "男学生",
+  "冴子先生": "冴子老师",
 }
 
 SOURCES = {
@@ -147,19 +148,38 @@ def load_entries(path, kind):
     entries = []
     if kind == 'all_translatable':
         for e in data:
+            m_jp = e.get('meta_jp', '')
+            m_zh = e.get('meta_zh', '')
             for p in e.get('pages', []):
-                entries.append({'jp': p.get('jp', ''), 'zh': p.get('zh', ''), 'id': e['id']})
+                entries.append({'jp': p.get('jp', ''), 'zh': p.get('zh', ''), 'id': e['id'], 'meta_jp': m_jp, 'meta_zh': m_zh})
     else:
         for e in data:
-            entries.append({'jp': e.get('jp', ''), 'zh': e.get('zh', ''), 'id': e.get('id', '?')})
+            entries.append({'jp': e.get('jp', ''), 'zh': e.get('zh', ''), 'id': e.get('id', '?'), 'meta_jp': '', 'meta_zh': ''})
     return entries
 
 def main():
     all_entries = []
     for kind, path in SOURCES.items():
-        all_entries.extend(load_entries(path, kind))
+        if os.path.exists(path):
+            all_entries.extend(load_entries(path, kind))
 
+    print("=== 1. 检查说话人 (meta_jp -> meta_zh) 译名 ===")
+    seen_meta = set()
+    for entry in all_entries:
+        m_jp = entry['meta_jp']
+        m_zh = entry['meta_zh']
+        if not m_jp or not m_zh: continue
+        for jp_name, std_name in FINAL_NAMES.items():
+            if not std_name: continue  # 跳过没有配置中文的选项
+            if jp_name in m_jp and std_name not in m_zh:
+                if (m_jp, m_zh) not in seen_meta:
+                    print(f"  [发现不匹配] 日文: {m_jp} | 当前中文: {m_zh} | 缺少: '{std_name}' (出处: {entry['id']})")
+                    seen_meta.add((m_jp, m_zh))
+
+    print("\n=== 2. 检查正文对话 (jp -> zh) 译名 ===")
     for jp_name, std_name in FINAL_NAMES.items():
+        if not std_name: continue
+        
         # 收集所有提到该角色且中文不包含标准名的句子
         samples = []
         for entry in all_entries:
@@ -167,11 +187,11 @@ def main():
                 continue
             if std_name in entry['zh']:
                 continue   # 已经是标准名，跳过
-            samples.append((entry['id'], entry['jp'][:60], entry['zh'][:80]))
-            if len(samples) >= 3:   # 每种只保留前3个示例
-                break
+            # 将换行符去掉，方便在终端查看
+            samples.append((entry['id'], entry['jp'].replace('\n', ' ')[:60], entry['zh'].replace('\n', ' ')[:80]))
+
         if samples:
-            print(f'\n=== {jp_name} (应为: {std_name}) ===')
+            print(f'\n--- {jp_name} (应包含: {std_name}) ---')
             for sid, jp_s, zh_s in samples:
                 print(f'  [{sid}]')
                 print(f'    JP: {jp_s}')

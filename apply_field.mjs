@@ -45,10 +45,44 @@ function encodeText(s, charToCode) {
         for (const a of args) codes.push(a & 0xffff);
         i = j + 1;
       } else {
-        // 不是合法 cXX 控制码标签(如变量占位符 <舞耶>/<前>) → 把 '<' 当普通字符编码
-        const c = charToCode["<"];
-        if (c === undefined) { ok = false; if (!miss) miss = "<"; codes.push(0); } else codes.push(c);
-        i += 1;
+        // 不是合法 cXX 控制码标签 → 检查是否是已知的"非控制码占位符"
+        // 这些是翻译时用来标记变量/动作的文本，不是真正的控制码，应整体保留
+        const KNOWN_PLACEHOLDERS = [
+          "舞耶跳下", "前", "舞耶", "克哉", "荣吉", "丽莎", "淳", "达哉", "报复",
+          "银子", "雪野", "鼻血子", "花姐", "米歇尔", "丽", "无名", "JOKER", "绕道而行",
+          "憎恨", "不憎恨", "自己可能也做过同样的事", "即使痛苦也要忍耐",
+          // 新增：
+          "迂回する",           // 日文占位符（保留日文的）
+          "憎い", "憎くない",   // 日文选项
+          "自分も同じ事をしたかもしれない",  // 日文选项
+          "辛くても耐えろ",     // 日文选项
+          "黛淳",               // 黑须淳的另一种称呼
+          "ギンコ",             // 银子（日文）
+          "黒須",               // 黑须
+        ];
+        const isPlaceholder = KNOWN_PLACEHOLDERS.some(p => tag === p);
+        if (isPlaceholder) {
+          // 整体作为普通文本编码：先编码 '<'，再编码内容，最后编码 '>'
+          const lt = charToCode["<"];
+          const gt = charToCode[">"];
+          if (lt === undefined || gt === undefined) {
+            ok = false; if (!miss) miss = "<或>"; codes.push(0);
+          } else {
+            codes.push(lt);
+            for (const ch of tag) {
+              const c = charToCode[ch];
+              if (c === undefined) { ok = false; if (!miss) miss = ch; codes.push(0); }
+              else codes.push(c);
+            }
+            codes.push(gt);
+          }
+          i = j + 1;
+        } else {
+          // 不是已知占位符 → 只把 '<' 当普通字符编码
+          const c = charToCode["<"];
+          if (c === undefined) { ok = false; if (!miss) miss = "<"; codes.push(0); } else codes.push(c);
+          i += 1;
+        }
       }
     } else if (s[i] === "\\" && s[i + 1] === "n") {
       codes.push(0x1101); i += 2;               // 字面 \n（jp 来源）
@@ -66,7 +100,14 @@ function encodeText(s, charToCode) {
 // 标签守恒比对用的归一化 key：剔除装饰性版面码 <c20/>（分句/缩进标记, DeepSeek 重组句子时
 // 常丢 1 个; 丢了只是版面略变, 显示中文远好过整条退回日文）。其余结构码(c1d/c1e/c5/c6/c2/ce…)仍严格。
 const COSMETIC_TAGS = new Set(["<c20/>"]);
-const tagKey = (s) => (s.match(/<[^>]+>/g) || []).filter(t => !COSMETIC_TAGS.has(t)).sort().join();
+// 标签守恒比对用的归一化 key：仅保留真正的控制码（cXX 格式），剔除装饰码 <c20/> 和所有占位符文本。
+const tagKey = (s) => (s.match(/<[^>]+>/g) || [])
+  .filter(t => {
+    const inner = t.replace(/^<|>$/g, '').replace(/\/$/, '');  // 去掉尖括号和尾部斜杠
+    // 只保留 c 开头 + 十六进制数字 的控制码（如 c5:15, c1d:11, c6 等）
+    return /^c[0-9a-f]+/i.test(inner) && !COSMETIC_TAGS.has(t);
+  })
+  .sort().join();
 
 // 算一条对话的字节结束位置（与提取器同逻辑：遇 RET 0x1103 结束）
 function dialogEnd(d, off) {
