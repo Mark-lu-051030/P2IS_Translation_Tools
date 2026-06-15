@@ -88,6 +88,23 @@ function extractFile(d) {
     const jp = render(items);
     if (cjk(jp) >= 3) out.push({ off: start, jp });
   }
+  // 补扫(2026-06-15): RET 定界用 start=上一条结尾, 当对话【前面紧挨结构性二进制】时 start 对不齐
+  // → 整条被漏(如 file1117 山顶决战仮面党員系列 @0xa9c, 玩家反馈)。以 speaker码(0x121d)为锚
+  // 重扫: 凡未被已收对话覆盖、能干净解析到 RET、CJK 足够的, 补入。speaker 锚天然避免误提结构数据。
+  const spans = out.map(o => [o.off, dialogEnd(d, o.off)]);
+  const covered = p => spans.some(([a, b]) => b > 0 && p >= a && p < b);
+  for (let p = 0; p < nU; p++) {
+    if (d.readUInt16LE(p * 2) !== 0x121d) continue;   // speaker open(<c1d:11/>)
+    const off = p * 2;
+    if (covered(off)) continue;
+    const end = dialogEnd(d, off);
+    if (end < 0 || end - off > 4000) continue;
+    const items = msg.parse(d, off, true);
+    if (!items) continue;
+    const jp = render(items);
+    if (cjk(jp) >= 3) { out.push({ off, jp }); spans.push([off, end]); }
+  }
+  out.sort((a, b) => a.off - b.off);
   return out;
 }
 
@@ -167,8 +184,9 @@ for (let id = start; id <= end; id++) {
   process.stderr.write(`\rfile ${id} (${(fsz / 1024 | 0)}KB) bufs=${bufs.length} +${cnt}新 (${Date.now() - _t0}ms) 累计 ${all.length}            \n`);
 }
 await bfp.close();
-fss.writeFileSync("out/field_text.json", JSON.stringify(all, null, 1));
-log(`\n提取 ${all.length} 条新字段文本（已去重跳过 ${dedup} 条已翻）, 跨 ${perFile.length} 个文件 → out/field_text.json`);
+const OUT_PATH = process.env.P2IS_FIELD_OUT || "out/field_text.json";   // 可覆盖输出, 避免动现有翻译版
+fss.writeFileSync(OUT_PATH, JSON.stringify(all, null, 1));
+log(`\n提取 ${all.length} 条新字段文本（已去重跳过 ${dedup} 条已翻）, 跨 ${perFile.length} 个文件 → ${OUT_PATH}`);
 perFile.sort((a, b) => b[1] - a[1]);
 log("Top 文件 (id:条数): " + perFile.slice(0, 20).map(x => x[0] + ":" + x[1]).join("  "));
 const newScripts = scriptFiles.filter(id => !(id === 3 || id === 4 || id === 90 || id === 178 || (id >= 181 && id <= 577)));

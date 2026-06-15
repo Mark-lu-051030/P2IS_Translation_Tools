@@ -327,9 +327,28 @@ def main():
             final.pop(s)
         ours = {s: ch for s, ch in final.items() if ct_og.get(str(s)) != ch}
         pin_chars = set(final.values())
-        pinned_kana_free = sorted(FREE_KANA_SLOTS, reverse=True)
-        # 腾退: 我们的槽里、当前译文已不再使用的字(名表关键字必在 needed, 天然不可腾退)
-        evictable = pinned_kana_free + sorted(s for s, ch in ours.items() if ch not in needed_set)
+        # ── 腾退池(2026-06-15: 修 thrash + 扩容)──────────────────────────
+        # 旧 bug: free_kana_slots 164 槽已全被需要的中文字占满, 新字按【槽号】reverse 硬塞 →
+        #   2308/2251 等高位槽永远先被顶, 高频字(跶 freq36)被低频新字(煩/趋 freq2)挤出,
+        #   跨 build 抢同几个槽来回互顶 = 无限循环, 谁进谁出看运气(实证: 跶 时有时无)。
+        # 修法:
+        #   ① 扩池: free_kana ∪ 未使用的 og 日文汉字槽(中文用简体不用其繁体形, 该字不在 needed,
+        #      存档不引用这些 og 槽) → 腾退容量从 164 升到 ~210, 19 个新字全装得下。
+        #   ② 确定性分级腾退(不再抢椅子):
+        #      free_now  先用"槽内字已不再需要"的槽 → 白拿, 不牺牲任何需要的字(扩进来的 og 槽全在此类)
+        #      sacrifice 不够时才动池内"占着需要字"的槽, 按该字 freq 升序(只丢最低频, 高频如跶必留)
+        og_pool = [s for s in range(ALLOC_BOTTOM + 1, MAX_SAFE_SLOT + 1)
+                   if (oc := ct_og.get(str(s))) and len(oc) == 1 and final.get(s) == oc
+                   and oc not in needed_set
+                   and ('一' <= oc <= '鿿' or '぀' <= oc <= 'ヿ' or '㐀' <= oc <= '䶿')]
+        pool = set(FREE_KANA_SLOTS) | set(og_pool)
+        free_now = sorted((s for s in pool if final.get(s) not in needed_set), reverse=True)
+        sacrifice = sorted((s for s in pool if final.get(s) in needed_set),
+                           key=lambda s: (freq.get(final.get(s), 0), -s))
+        evictable = free_now + sacrifice \
+                  + sorted(s for s, ch in ours.items() if s not in pool and ch not in needed_set)
+        print(f'      腾退池: free_kana {len(FREE_KANA_SLOTS)} + 未用og槽 {len(og_pool)} '
+              f'→ 白拿 {len(free_now)} / 需牺牲 {len(sacrifice)}')
         # 新字队列: 排除 equiv 可别名满足的日文字(時→时 等, encode_zh 会映射到 CN 槽,
         # 不排除的话它们按高频挤占腾退槽, 真正的新字反而进不来)
         _eq = {}

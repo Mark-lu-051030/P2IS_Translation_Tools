@@ -34,7 +34,7 @@ python3 fix_ecc.py <起始扇区LBA> <结束扇区LBA>
 
 位于 ISO 扇区 `0x17`，大小 **`0x2400` 字节（1144 个文件）**。
 
-> ⚠️ **历史错误已推翻**：早期管道（cdimage.mjs）硬编码只读 `0x1b88`（881 个文件），导致 file 881-1143 整段被漏——外景对话(file 1075)/装备说明/简介等从没进过翻译管线（2026-06-04 发现并补齐，字段文本管道按真实 1144 读全表）。文档/代码里再见到"881"都是这个旧错的残留。
+> ⚠️ **历史错误已推翻**：早期管道（cdimage.mjs）硬编码只读 `0x1b88`（881 个文件），导致 file 881-1143 整段被漏——外景对话(file 1075)/装备说明/简介等从没进过翻译管线（2026-06-04 字段文本管道先按真实 1144 读全表绕过）。**⚠ 但 `lib/cdimage.mjs` 本体直到 2026-06-15 才真正改成 `0x2400`**——在此之前 `cdimage.read_file(>880)` 会直接抛 "offset out of range"，凡走 cdimage 的（`extract_script` 等）对 file 881-1143 全部失败。现已修，extract_script 也能读 >880。文档/代码里再见到"881/0x1b88"都是这个旧错的残留。
 
 每条记录 **8 字节**：
 
@@ -52,7 +52,7 @@ const size  = fileposdat.readUInt32LE(N * 8 + 4);  // 字节数
 
 | 文件号 | 文件名 | 内容 |
 |--------|--------|------|
-| **59** | — | **对话字体（LZSS 压缩，2 个 sub-file，每个解压 65520 字节）** ⭐（D1 扩容后已搬到 ISO 末尾 sector 294186） |
+| **59** | — | **对话字体（LZSS 压缩，2 个 sub-file，每个解压 65520 字节）** ⭐（D1 扩容后重定位到 `DUMMY.DAT` 占用扇区 LBA 278075；2026-06-15 改：原"追加 ISO 末尾"成 ISO9660 无名"隐含文件"，镜像工具/严格模拟器读不到→改放 DUMMY.DAT，盘大小/PVD 不变、数据全在卷内） |
 | 86 | F0086.BIN | 裸未压缩字库 = **file59 sub0 的逐字节副本**（100% 相同）。对话不读它（读 file 59）；⚠ 旧结论"命名界面读 file86"已被哨兵实验推翻——**命名界面 UI 文本读 file59 sub1（JIS 字库）**，file86 真实用途待查（inject_font_f86 同步保留,无害） |
 | 3 / 4 | — | 战斗/剧情脚本（**RLE 压缩**），觉醒/変異等战斗事件对话 |
 | 77 | — | 多 sub 归档：**Persona 変異台词** + NPC 对话（tc 链式定位，白屏案发现场） |
@@ -229,7 +229,7 @@ SLPS sub-file 描述符表 @ RAM 0x80010070-0x8001007f (ISO sector 29 offset 0x7
   0x80010078: 00 00 16 00 1C 00 01 00   ← Desc 2: sub-file 1, offset=22, size=28 sectors
 ```
 
-只要 patch 这 16 字节里的两处 sector 数 + 把 file 59 搬到 ISO 末尾让 sub-file 1 后移，就能扩 sub-file 0 的压缩容量。最初扩到 30 sectors，**2026-06-04 字段文本字多再扩到 32 sectors（`0x16 → 0x20`，= 65536 字节 LZSS）**，Desc1 最终由 `set_subfile0_size` 按实际压缩大小动态精确设定（防 CD 多读溢出 ring buffer）。详见 `patch_subfile_table.py` + `relocate_file59.py`。
+只要 patch 这 16 字节里的两处 sector 数 + 把 file 59 重定位（让 sub-file 1 后移），就能扩 sub-file 0 的压缩容量。最初扩到 30 sectors，**2026-06-04 字段文本字多再扩到 32 sectors（`0x16 → 0x20`，= 65536 字节 LZSS）**，Desc1 最终由 `set_subfile0_size` 按实际压缩大小动态精确设定（防 CD 多读溢出 ring buffer）。**重定位落点 2026-06-15 改为 `DUMMY.DAT` 占用扇区**（原"追加 ISO 末尾"成 ISO9660 无名隐含文件、兼容性差；DUMMY.DAT 是 32MB 填充文件、游戏从不读，覆盖其起始扇区即可，盘大小/PVD 不变、数据全在卷内）。详见 `patch_subfile_table.py` + `relocate_file59.py`。
 
 **修改流程**（D1 模式，由 `build.py` 编排）：
 
@@ -305,15 +305,15 @@ P2IS_Translation_Tools/
 | `apply_affinity.mjs` | **Persona属性抗性句**(file47/69/70/71/1109 五副本)：模板句典(ATTR×动作)+原位等长(ct码+全角空格填充),控制码/指针表零改动。`extract`/`apply` 双模式。⚠ parseEntries 条目尾 p=q-2 防隔条漏 | ✅ |
 | `apply_tarot.mjs` | **塔罗/魔法卡描述**(file1105 主显示源+64-67 残留)：解析 strtbl 同构条目→查 strtbl:64_0_* 译文 LUT→逐行原位等长。幂等 | ✅ |
 | `apply_battlenames.mjs` | 战斗面板名(file1129 名字簇)原位翻译——数据正确但游戏不读(RAM 另有源)。**2026-06-11 已从 build 摘除、file1129 还原原版**(人名乱套排查时消变量,后证实乱套真凶是码表漂移) | ⛔已摘除 |
-| **`extract_field_text.mjs`** | 提取主管道漏掉的**字段文本**（外景对话 file 1075、装备/简介/传闻 等，散在非-scene_script 自定义格式文件）。读全文件表(0x2400, 真实 1144 文件)、有界 sub 枚举、RET 定界、CJK 密度过滤、内容级去重 → `out/field_text.json` | ✅ |
+| **`extract_field_text.mjs`** | 提取主管道漏掉的**字段文本**（外景对话 file 1075、装备/简介/传闻 等，散在非-scene_script 自定义格式文件）。读全文件表(0x2400, 真实 1144 文件)、有界 sub 枚举、RET 定界、CJK 密度过滤、内容级去重 → `out/field_text.json`。**2026-06-15 fix B：RET 定界后加 speaker码(0x121d)锚点补扫**——RET 定界用"上一条结尾"作起点，对话前面紧挨结构性二进制（指针表/`MD_6_*`标签/`「`码密集区）时起点对不齐→整条漏（file1117 山顶决战仮面党員等，全量重提多捞回 38 条真对话）；speaker 锚天然避免误提结构数据。`P2IS_FIELD_OUT` 可改输出路径（不动现有翻译版） | ✅ |
 | **`clean_field_text.py`** | 清洗字段文本：过滤垃圾(单字符重复噪音)、按唯一 jp 去重 → `out/field_to_translate.json`(翻译输入) + `out/field_text_clean.json`(全部出现位置) | ✅ |
 | **`translatable/translate_field.py`** | 字段文本 DeepSeek-R1 批量翻译（复用角色名锁定，⚠Maya=**舞耶**非麻耶；保留 `<cXX/>`+`\n`；partial 按唯一 id 命名；`--merge` 合并 + NAME_FIX 归一化；`--retrans` 重译太长条目更短）。⚠ **`--merge`(含每次跑完自动触发的)是"从 clean 重建+按 jp 回填 partials"——会清掉 field_text_zh 里所有手工修复**(新增条目/偏移修正/speaker批修/直接编辑,2026-06-12 实证翻车)。手工编辑后必须 commit;重新合并一律用 `field_consolidate.py`(HEAD 基底+只填空白) | ✅ |
-| **`apply_field.mjs`** | 字段文本回插：原位等长(zh码+**RET紧跟zh**+全角空格填到原字节数；padding必须在RET后否则游戏逐字渲染空格卡顿)，**从 WORK 读**保留前面 apply、**跳过结构性条目**、未注册表文件按jp内容重建变长(不缩短)、绕过 cdimage 881 上限直接扇区写。**含归档子文件路径**：file 1112-1117/77 多sub归档里~1013条NPC对话(解压→原位改→**`compress_to_size` 精确填满原 tc** 保留头tag塞回原槽——⚠ 这类归档无偏移表、游戏按 tc 链式定位 sub，tc 短一字节后续 sub 全错位=変異白屏真凶，2026-06-11 根治)。tag比对忽略装饰码`<c20/>`(救回93条描述)；encodeText把非cXX的`<占位符>`(如`<舞耶>`)当字符。`verify`/`dry`/`apply`/`dumptoolong`(导出太长/标签不符/缺字) | ✅ |
+| **`apply_field.mjs`** | 字段文本回插：原位等长(zh码+**RET紧跟zh**+全角空格填到原字节数；padding必须在RET后否则游戏逐字渲染空格卡顿)，**从 WORK 读**保留前面 apply、**跳过结构性条目**、未注册表文件按jp内容重建变长(不缩短)、绕过 cdimage 881 上限直接扇区写。**含归档子文件路径**：file 1112-1117/77 多sub归档里~1013条NPC对话(解压→原位改→**`compress_to_size` 精确填满原 tc** 保留头tag塞回原槽——⚠ 这类归档无偏移表、游戏按 tc 链式定位 sub，tc 短一字节后续 sub 全错位=変異白屏真凶，2026-06-11 根治)。tag比对忽略装饰码`<c20/>`(救回93条描述)；encodeText把非cXX的`<占位符>`(如`<舞耶>`)当字符。`verify`/`dry`/`apply`/`dumptoolong`(导出太长/标签不符/缺字)。**2026-06-15**：①`SKIP_FILES` 加 **file 160**(=F0160.EXT 片头ATLUS影片，FILEPOS 过读区里的角色立绘情绪标签被误当字段文本，写进去致片头尾端破音；玩家不可见，整文件跳过让其与原版逐字节一致)；②`apply` 模式**也刷新** field_toolong/misschar/tagmiss.json(原来只 dumptoolong/dry 刷、且 dry 读副本会漏掉被前序 apply 挤短占位的条目——真 build 报的"太长"才是真实落地状态)；③`P2IS_WORK_ISO` 可改 WORK 路径(副本验证) | ✅ |
 | `shorten_toolong.py` | 把太长字段译文缩到≤budget(译者审定的等价缩写规则+逐条OVERRIDE,保意减字只裁多出部分)→合回 field_text_zh.json。太长 760→14 | ✅ |
 | `fix_misschar.py` | 字库没有的罕用字(频率1被丢)在译文里换常用同义词(摩羯座→山羊座/馒头→包子/内讧→内斗)，不占字库。缺字 22→0 | ✅ |
 | `patch_subfile_table.py` | **D1 扩容 Step 1**：patch SLPS sub-file 描述符表（Desc1+Desc2 22→**32** sectors，字段文本字多扩到 32；Desc1 实际由 set_subfile0_size 动态精确设） | ✅ |
-| `relocate_file59.py` | **D1 扩容 Step 2**：把 file 59 搬到 ISO 末尾 + sub-file 1 在 **32** sectors offset；同时更新 FILEPOS.DAT 和 PVD | ✅ |
-| `inject_chinese_font.py` | **D1 字体注入**：读 working ISO file 59 → **按 `codetable_pinned.json` 钉死布局**复现全部槽位（新字只进腾退槽,equiv 日文字过滤出队列）→ **`compress_optimal` 重压缩**(挤进 32 sectors) → 修 ECC + Desc1 动态 N。扫 all_translatable + map/room/**field_text_zh** + **名表/UI zh(提权)**。⚠ decompressed 65520 锁死(槽≤3575)，装不下的极罕用字丢弃(out/skipped_chars.txt) | ✅ |
+| `relocate_file59.py` | **D1 扩容 Step 2**：把 file 59 archive（~60 sectors）写进 **`DUMMY.DAT` 占用扇区**(LBA 278075，覆盖填充无害) + sub-file 1 在 **32** sectors offset；只改 FILEPOS.DAT[59]，**盘大小/PVD 不变**。`iso9660_find()` 动态定位 DUMMY.DAT，`--iso/--bak` 可指定盘（副本验证）。⚠ 2026-06-15 前是"追加 ISO 末尾+改 PVD"，那块成 ISO9660 无名隐含文件（兼容性隐患），已改 | ✅ |
+| `inject_chinese_font.py` | **D1 字体注入**：读 working ISO file 59 → **按 `codetable_pinned.json` 钉死布局**复现全部槽位（新字只进腾退槽,equiv 日文字过滤出队列）→ **`compress_optimal` 重压缩**(挤进 32 sectors) → 修 ECC + Desc1 动态 N。扫 all_translatable + map/room/**field_text_zh** + **名表/UI zh(提权)**。⚠ decompressed 65520 锁死(槽≤3575)，装不下的极罕用字丢弃(out/skipped_chars.txt)。**2026-06-15 修"抢椅子"**：原腾退池只 164 个 free_kana 槽且全被需要的字占满、新字按槽号硬塞会顶掉高频字(跶被煩顶)、跨 build 来回互顶致新字时有时无；改为**扩池(并入未使用 og 日文汉字槽)+ 确定性分级腾退**(先用"槽内字已不需要"的白拿、不够才按 freq 升序牺牲最低频)，连续 build 收敛不再 thrash | ✅ |
 | `inject_font_f86.py` | **file 86 字体同步**：file 86 = file59 sub0 逐字节副本，真实读取方未知（命名界面读 sub1 不读 file86）。保留同步以防其他界面引用，把注入 file 59 的同批中文字形（codetable≠og 的槽）写进 file 86 | ✅ |
 | `encode_zh.py` | 把 script 翻译编码成字符码 items（含 META 段处理 + 全角标点 alias），输出 `out/scripts_zh/` | ✅ |
 | `encode_strtbl.py` | 把 strtbl 翻译编码成 items，输出 `out/strtbl_zh/`（文件名 regex 支持 SLUS 前缀=file 0） | ✅ |

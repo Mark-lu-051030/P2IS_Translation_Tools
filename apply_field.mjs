@@ -250,10 +250,17 @@ function verify(fileFilter) {
 
 // ── 回插：原位等长写回 zh ──────────────────────────────────────
 import { spawnSync } from "child_process";
-const WORK = "/home/mark/Code/RomHacking/Game/P2IS_PSX/ogd/Persona 2 - Tsumi - Innocent Sin (Japan).bin";
-// 整文件级跳过（目前空）。1102 等的崩溃由下面的"结构性条目过滤"解决：只跳过被误提取的
+const WORK = process.env.P2IS_WORK_ISO || "/home/mark/Code/RomHacking/Game/P2IS_PSX/ogd/Persona 2 - Tsumi - Innocent Sin (Japan).bin";
+// 整文件级跳过。1102 等的崩溃由下面的"结构性条目过滤"解决：只跳过被误提取的
 // 文件头/指针表条目(「密集)，真正的文本消息照常翻译。验证过 apply 1102 在过滤后正常。
-const SKIP_FILES = new Set();
+//
+// file 160 = F0160.EXT，片头 ATLUS 影片(STR)。ISO9660 大小 4503552，但 FILEPOS[160]
+// 过读到 5136864(多 309 扇区)。提取器把影片之后过读区里的角色立绘情绪标签
+// (`01_英雄(18岁)通常`/`笑い`/`怒り`…，玩家永不可见)误当字段文本提取，apply 会把它们
+// 写进 offset 4.75MB+。这块仍在 FILEPOS[160] 过读范围内，若播放器按 FILEPOS 大小整段
+// 读进 STR 解码 → 尾端破音(有玩家反馈片头有破音)。这些标签翻译零收益，整文件跳过，
+// 让 file 160 与原版逐字节一致。
+const SKIP_FILES = new Set([160]);
 // 结构性条目检测：有些"字段文本"其实是文件头/指针表(u32偏移)被误提取，渲染成 "「X「Y" 模式
 // (「=code 0x0000=指针高字节零)。往这写中文会把指针表写烂 → 崩(如 file 1102 的存读档界面)。
 // 真对话/消息几乎不含「。故「密集 = 结构性数据, 跳过不写。
@@ -338,15 +345,14 @@ function apply(dry, fileFilter, dump) {
         const end = dialogEnd(d, off); if (end < 0) { totNoRet++; skip++; continue; }
         const spanCodes = (end - off) / 2;                   // 含结尾 RET
         // 标签守恒检查(忽略装饰码 <c20/>)
-        if (tagKey(jp) !== tagKey(zhtext)) { totTag++; skip++; if (dump) tagmiss.push({ id: `field:${id}:0x${off.toString(16)}`, jp, zh: zhtext }); continue; }
+        if (tagKey(jp) !== tagKey(zhtext)) { totTag++; skip++; tagmiss.push({ id: `field:${id}:0x${off.toString(16)}`, jp, zh: zhtext }); continue; }
         const { codes, ok, miss } = encodeText(zhtext, rev);
-        if (!ok) { totEnc++; if (miss) encMiss[miss] = (encMiss[miss] || 0) + 1; skip++; if (dump) misschar.push({ id: `field:${id}:0x${off.toString(16)}`, jp, zh: zhtext, miss }); continue; }
+        if (!ok) { totEnc++; if (miss) encMiss[miss] = (encMiss[miss] || 0) + 1; skip++; misschar.push({ id: `field:${id}:0x${off.toString(16)}`, jp, zh: zhtext, miss }); continue; }
         if (codes.length + 1 > spanCodes) {
           totTooLong++; skip++;
-          if (dump) {   // 导出供重译更短：budget = jp 可见字符数(去标签/换行), zh 须 ≤ 此数
-            const vis = jp.replace(/<[^>]*>/g, "").replace(/\\n/g, "").length;
-            toolong.push({ id: `field:${id}:0x${off.toString(16)}`, jp, oldzh: zhtext, budget: vis });
-          }
+          // 导出供重译更短：budget = jp 可见字符数(去标签/换行), zh 须 ≤ 此数
+          const vis = jp.replace(/<[^>]*>/g, "").replace(/\\n/g, "").length;
+          toolong.push({ id: `field:${id}:0x${off.toString(16)}`, jp, oldzh: zhtext, budget: vis });
           continue;
         }
         // 写：zh codes + RET(紧跟,避免逐字"打字"渲染 padding 卡住) + 余下填充(RET 后不会被读)
@@ -406,12 +412,12 @@ function apply(dry, fileFilter, dump) {
       for (const { off, jp, zh: zhtext } of arcByFile[id][si]) {
         const end = dialogEnd(dc, off); if (end < 0) { totNoRet++; totSkip++; continue; }
         const spanCodes = (end - off) / 2;
-        if (tagKey(jp) !== tagKey(zhtext)) { totTag++; totSkip++; if (dump) tagmiss.push({ id: `field:${id}_${si}d:0x${off.toString(16)}`, jp, zh: zhtext }); continue; }
+        if (tagKey(jp) !== tagKey(zhtext)) { totTag++; totSkip++; tagmiss.push({ id: `field:${id}_${si}d:0x${off.toString(16)}`, jp, zh: zhtext }); continue; }
         const { codes, ok, miss } = encodeText(zhtext, rev);
-        if (!ok) { totEnc++; if (miss) encMiss[miss] = (encMiss[miss] || 0) + 1; totSkip++; if (dump) misschar.push({ id: `field:${id}_${si}d:0x${off.toString(16)}`, jp, zh: zhtext, miss }); continue; }
+        if (!ok) { totEnc++; if (miss) encMiss[miss] = (encMiss[miss] || 0) + 1; totSkip++; misschar.push({ id: `field:${id}_${si}d:0x${off.toString(16)}`, jp, zh: zhtext, miss }); continue; }
         if (codes.length + 1 > spanCodes) {
           totTooLong++; totSkip++;
-          if (dump) { const vis = jp.replace(/<[^>]*>/g, "").replace(/\\n/g, "").length; toolong.push({ id: `field:${id}_${si}d:0x${off.toString(16)}`, jp, oldzh: zhtext, budget: vis }); }
+          const vis = jp.replace(/<[^>]*>/g, "").replace(/\\n/g, "").length; toolong.push({ id: `field:${id}_${si}d:0x${off.toString(16)}`, jp, oldzh: zhtext, budget: vis });
           continue;
         }
         for (let k = 0; k < codes.length; k++) dc.writeUInt16LE(codes[k], off + k * 2);
@@ -446,12 +452,12 @@ function apply(dry, fileFilter, dump) {
   console.log(`\n总: 写回 ${totWrote}, 跳过 ${totSkip} (无RET ${totNoRet}, 标签不符 ${totTag}, 编码失败/缺字 ${totEnc}, 太长 ${totTooLong})`);
   const missTop = Object.entries(encMiss).sort((a, b) => b[1] - a[1]).slice(0, 30);
   if (missTop.length) console.log("缺字 top30 (字:次数): " + missTop.map(([c, n]) => `${c}:${n}`).join(" "));
-  if (dump) {
-    fs.writeFileSync("out/field_toolong.json", JSON.stringify(toolong, null, 1));
-    fs.writeFileSync("out/field_tagmiss.json", JSON.stringify(tagmiss, null, 1));
-    fs.writeFileSync("out/field_misschar.json", JSON.stringify(misschar, null, 1));
-    console.log(`\n导出: 太长 ${toolong.length} → field_toolong.json, 标签不符 ${tagmiss.length} → field_tagmiss.json, 缺字 ${misschar.length} → field_misschar.json`);
-  }
+  // 三个诊断 json 在 dry / dumptoolong / apply 都刷新（apply 读 WORK，是真实落地状态，
+  // 才是该照着修的"太长/缺字/标签不符"清单；dumptoolong 读原版副本会漏掉被前序 apply 挤短的占位）。
+  fs.writeFileSync("out/field_toolong.json", JSON.stringify(toolong, null, 1));
+  fs.writeFileSync("out/field_tagmiss.json", JSON.stringify(tagmiss, null, 1));
+  fs.writeFileSync("out/field_misschar.json", JSON.stringify(misschar, null, 1));
+  console.log(`\n导出: 太长 ${toolong.length} → field_toolong.json, 标签不符 ${tagmiss.length} → field_tagmiss.json, 缺字 ${misschar.length} → field_misschar.json`);
   if (!dry && eccRanges.length) {
     console.log(`修 ECC ${eccRanges.length} 段…`);
     for (const [a, b] of eccRanges) spawnSync("python3", ["fix_ecc.py", String(a), String(b)], { stdio: "ignore" });
