@@ -10,7 +10,7 @@ RAW = sys.argv[1].rstrip('/')
 FIXED = RAW + '_fixed'
 OUT = sys.argv[sys.argv.index('-o')+1] if '-o' in sys.argv else 'out/review_' + os.path.basename(RAW) + '.md'
 
-at = {e['id']: e for e in json.load(open('all_translatable.json', encoding='utf-8'))}
+at = {e['id']: e for e in json.load(open('/home/mark/Code/RomHacking/P2IS_Translation_Tools/out/field_text_zh.json', encoding='utf-8'))}
 norm = lambda s: (s or '').replace('\\n', '\n')
 def page(rid):
     m = re.search(r':p(\d+)$', rid); base, pi = (rid[:m.start()], int(m.group(1))) if m else (rid, 0)

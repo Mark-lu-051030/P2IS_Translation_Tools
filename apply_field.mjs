@@ -260,7 +260,11 @@ const WORK = process.env.P2IS_WORK_ISO || "/home/mark/Code/RomHacking/Game/P2IS_
 // 写进 offset 4.75MB+。这块仍在 FILEPOS[160] 过读范围内，若播放器按 FILEPOS 大小整段
 // 读进 STR 解码 → 尾端破音(有玩家反馈片头有破音)。这些标签翻译零收益，整文件跳过，
 // 让 file 160 与原版逐字节一致。
-const SKIP_FILES = new Set([160]);
+// file 1084 = 主菜单/状态屏 freetbl 区(LBA 271864)，由 mainmenu_strtbl.py 处理(含【居中】:
+// 短菜单项前补全角空格)。提取器把它也当字段文本提了(個人データ/マジック/全悪魔/角色名等)，
+// apply_field 在 mainmenu_strtbl 之后跑、原位等长写回(左对齐不居中) → 覆盖掉居中版，菜单歪。
+// 整文件交给 mainmenu_strtbl(owner)，apply_field 跳过。
+const SKIP_FILES = new Set([160, 1084]);
 // 结构性条目检测：有些"字段文本"其实是文件头/指针表(u32偏移)被误提取，渲染成 "「X「Y" 模式
 // (「=code 0x0000=指针高字节零)。往这写中文会把指针表写烂 → 崩(如 file 1102 的存读档界面)。
 // 真对话/消息几乎不含「。故「密集 = 结构性数据, 跳过不写。

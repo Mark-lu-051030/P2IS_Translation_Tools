@@ -121,10 +121,18 @@ def cmd_apply():
             skipped += 1; continue
         # 居中：原槽位宽度内，文本前补一半全角空格（游戏读到 0x1103 停，前导空格把字推到中间）
         # 长句 zh≈原长 → leading≈0 自然不受影响，只有短菜单项会居中
-        slot_u16 = s['byte_len'] // 2          # 槽位 uint16 数（含原终止符）
-        body = len(items) + 1                  # 中文 + 终止符
-        leading = max(0, (slot_u16 - body) // 2) if pad_code is not None else 0
-        items = [pad_code] * leading + items + [[3]]   # 前导空格 + 中文 + 终止符
+        slot_u16 = s['byte_len'] // 2
+        body = len(items) + 1
+
+        if pad_code is not None:
+            if 'pad' in s:
+                leading = max(0, int(s['pad']))
+            else:
+                leading = max(0, (slot_u16 - body) // 2)
+        else:
+            leading = 0
+
+        items = [pad_code] * leading + items + [[3]]
         b = items_bytes(items)
         if len(b) > s['byte_len']:
             print(f'  [{s["idx"]}] 太长跳过: {zh!r} ({len(b)}B > 原 {s["byte_len"]}B)')
