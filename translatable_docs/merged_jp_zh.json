@@ -22203,7 +22203,7 @@
   "src": "script",
   "id": "script:305_8:diag13",
   "speaker_jp": "ギンコ",
-  "speaker_zh": "金哥",
+  "speaker_zh": "银子",
   "jp": "\n<SURNAME/>そんな…情人(チンヤン)…<pause:30/>\n<SURNAME/>言い過ぎ…\n",
   "zh": "\n<SURNAME/>那样…情人…<pause:30/>\n<SURNAME/>说得太过分了…\n"
  },
@@ -22283,7 +22283,7 @@
   "src": "script",
   "id": "script:305_8:diag23",
   "speaker_jp": "ギンコ",
-  "speaker_zh": "金哥",
+  "speaker_zh": "银子",
   "jp": "\n<SURNAME/>可憐…(木ーリーン)<pause:30/>\n<SURNAME/>ゆきのさん…かわいそ…\n",
   "zh": "\n<SURNAME/>可怜…(呜咿咿)<pause:30/>\n<SURNAME/>雪野小姐…好可怜…\n"
  },
@@ -22291,7 +22291,7 @@
   "src": "script",
   "id": "script:305_8:diag24",
   "speaker_jp": "ギンコ",
-  "speaker_zh": "金哥",
+  "speaker_zh": "银子",
   "jp": "\n<SURNAME/>藤井さんガ悪いんじゃないって…わかるけど…<pause:30/>\n<SURNAME/>こんなの…!!<pause:30/>\n<SURNAME/>残される方は…たまらないよ…!!\n",
   "zh": "\n<SURNAME/>我知道不是藤井先生的错…<pause:30/>\n<SURNAME/>但是这样…!!<pause:30/>\n<SURNAME/>被留下的人…受不了啊…!!\n"
  },
@@ -110517,7 +110517,7 @@
   "speaker_jp": "",
   "speaker_zh": "",
   "jp": "<pause:0/><c1e:0/>イエローアウルのお面:入手\n",
-  "zh": "<pause:0/><c1e:0/>黄猫头鹰面具:获得"
+  "zh": "<pause:0/><c1e:0/>黄鸮面具:获得"
  },
  {
   "src": "strtbl",
@@ -110525,7 +110525,7 @@
   "speaker_jp": "",
   "speaker_zh": "",
   "jp": "<pause:0/><c1e:0/>イエローアウルのお面:削除\n",
-  "zh": "<pause:0/><c1e:0/>黄猫头鹰面具:删除"
+  "zh": "<pause:0/><c1e:0/>黄鸮面具:删除"
  },
  {
   "src": "strtbl",
@@ -231757,7 +231757,7 @@
   "speaker_jp": "",
   "speaker_zh": "",
   "jp": "<1103>×ボタンを押すと初期位置に戻ります",
-  "zh": "<1103>按×键返回初始位置"
+  "zh": "<1103>按下×键即可返回初始位置"
  },
  {
   "src": "config",
@@ -237861,7 +237861,7 @@
   "speaker_jp": "",
   "speaker_zh": "",
   "jp": "イエローアウルのお面",
-  "zh": "黄猫头鹰面具"
+  "zh": "黄鸮面具"
  },
  {
   "src": "nametable",
@@ -237869,7 +237869,7 @@
   "speaker_jp": "",
   "speaker_zh": "",
   "jp": "ピンクアーザスのお面",
-  "zh": "粉红阿扎斯面具"
+  "zh": "粉斑雉面具"
  },
  {
   "src": "nametable",
